@@ -938,15 +938,39 @@ with st.sidebar:
     asr_model = st.selectbox("ASR 模型", ["tiny", "base", "small", "medium"], index=2)
     st.caption("首次运行会自动下载模型(small 约 460MB)。")
 
+language = {"自动检测": None, "中文 (zh)": "zh", "英文 (en)": "en"}[lang_opt]
+
+# ============ 标题(主界面 / 设置页共用) ============
+st.title("🎙️ 会议智治与跨语言沟通平台")
+
+# ============ 常驻实时字幕组件 ============
+# 关键:无论停在哪个导航页都保持挂载。切换「⚙️ 设置」页填 key 时,若组件只渲染在
+# 「实时字幕」标签里,Streamlit 会因 st.stop() 跳过该标签而卸载 iframe,正在进行的
+# 录音 / 转写随之被打断。因此把它提到页面顶部、每个 rerun 都渲染一次,iframe 常驻
+# 不销毁;设置页 / 历史回看仅用 CSS 隐藏该卡片,录音仍在后台继续。
+lang_code = {"自动检测": "zh-CN", "中文 (zh)": "zh-CN", "英文 (en)": "en-US"}[lang_opt]
+cloud_enabled = bool(xfyun_appid and xfyun_apikey)
+raw = _speech_recorder(
+    lang=lang_code,
+    key="speech_recorder",
+    cloud_enabled=cloud_enabled,
+    backend_url=settings.rtasr_ws_url,
+    xfyun_appid=xfyun_appid,
+    xfyun_apikey=xfyun_apikey,
+)
+
+# 设置页 / 历史回看时隐藏常驻录音卡片(仍保持挂载,录音不中断)
+if nav == "⚙️ 设置" or st.session_state.get("view_run_id"):
+    st.markdown(
+        '<style>[data-testid="stCustomComponentV1"]{display:none;}</style>',
+        unsafe_allow_html=True,
+    )
+
 # ============ 设置页 ============
 if nav == "⚙️ 设置":
     _render_settings()
     st.stop()
 
-language = {"自动检测": None, "中文 (zh)": "zh", "英文 (en)": "en"}[lang_opt]
-
-# ============ 标题 ============
-st.title("🎙️ 会议智治与跨语言沟通平台")
 st.caption("上传会议录音或粘贴对话文本,一键生成结构化纪要")
 
 # ============ 历史记录查看 ============
@@ -989,9 +1013,7 @@ with tab_audio:
         st.audio(uploaded)
 
 with tab_live:
-    # 实时字幕:侧边栏填了用户自己的讯飞 key 走云端,否则回退 Web Speech API。
-    lang_code = {"自动检测": "zh-CN", "中文 (zh)": "zh-CN", "英文 (en)": "en-US"}[lang_opt]
-    cloud_enabled = bool(xfyun_appid and xfyun_apikey)
+    # 实时字幕:录音 / 转写由页面顶部的常驻组件负责,这里只承接它回传的结果。
     st.caption(
         "实时语音转写:侧边栏填了自己的讯飞 key 走云端(接近讯飞听见);"
         "留空则回退浏览器 Web Speech API(需 Chrome / Edge 并联网)。"
@@ -999,14 +1021,6 @@ with tab_live:
     st.session_state.setdefault("wsr_edit", "")
     st.session_state.setdefault("wsr_last", "")
 
-    raw = _speech_recorder(
-        lang=lang_code,
-        key="speech_recorder",
-        cloud_enabled=cloud_enabled,
-        backend_url=settings.rtasr_ws_url,
-        xfyun_appid=xfyun_appid,
-        xfyun_apikey=xfyun_apikey,
-    )
     # 组件回传 {text, running}:running=true 表示录音仍在进行,text 为已定稿文本。
     if isinstance(raw, dict):
         live_raw_text = (raw.get("text") or "").strip()
