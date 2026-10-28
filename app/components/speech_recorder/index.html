@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>实时字幕 · 讯飞云端 / Web Speech API</title>
+  <style>
+    :root {
+      --bg: #ffffff; --fg: #1f2937; --muted: #6b7280; --border: #e5e7eb;
+      --accent: #2563eb; --accent-fg: #ffffff; --card: #f9fafb; --danger: #dc2626;
+    }
+    body.dark {
+      --bg: #0e1117; --fg: #f9fafb; --muted: #9ca3af; --border: #262730;
+      --accent: #3b82f6; --accent-fg: #ffffff; --card: #161a22; --danger: #f87171;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      font-size: 14px; line-height: 1.6;
+    }
+    .app { padding: 4px 2px; }
+    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    button {
+      border: 1px solid var(--border); background: var(--card); color: var(--fg);
+      padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+      transition: background .15s, border-color .15s;
+    }
+    button:hover { border-color: var(--accent); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+    button.recording { background: var(--danger); color: #fff; border-color: var(--danger); }
+    select {
+      border: 1px solid var(--border); background: var(--card); color: var(--fg);
+      padding: 6px 8px; border-radius: 8px; font-size: 13px;
+    }
+    .status { font-size: 12px; color: var(--muted); margin-bottom: 8px; min-height: 18px; }
+    .status.live { color: var(--accent); }
+    .status.error { color: var(--danger); }
+    .transcript {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px; min-height: 120px; max-height: 260px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word; color: var(--fg);
+    }
+    .transcript.placeholder { color: var(--muted); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="toolbar">
+      <button id="startBtn" class="primary">🎙️ 开始录音</button>
+      <select id="langSel" aria-label="识别语言">
+        <option value="zh-CN">中文(普通话)</option>
+        <option value="en-US">English (US)</option>
+        <option value="yue-Hant-HK">粤语</option>
+      </select>
+      <button id="clearBtn">清空</button>
+    </div>
+    <div id="status" class="status">就绪 · 点击「开始录音」开始</div>
+    <div id="transcript" class="transcript placeholder">识别结果会实时显示在这里…</div>
+    <div class="hint" id="hint">识别引擎:侧边栏填了自己的讯飞 key 走云端实时转写(接近讯飞听见);留空则回退浏览器 Web Speech API(需 Chrome / Edge),不使用服务器任何 key。</div>
+  </div>
+
+  <script>
+    (function () {
+      // ---------- Streamlit 组件通信 ----------
+      function sendToParent(type, payload) {
+        var msg = { isStreamlitMessage: true, type: type };
+        if (payload) { for (var k in payload) { msg[k] = payload[k]; } }
+        window.parent.postMessage(msg, "*");
+      }
+
+      var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      var WebSocketCtor = window.WebSocket;
+
+      // ---------- 状态 ----------
+      var recognition = null;   // Web Speech 实例
+      var recording = false;
+      var mode = null;          // "cloud" | "speech"
+      var finalText = "";
+      var interimText = "";
+      var lastSent = "";
+      var sendTimer = null;
+
+      // 云端(讯飞)状态
+      var ws = null;
+      var micStream = null;
+      var audioCtx = null;
+      var processor = null;
+      var pcmChunks = [];       // Array<Int16Array>
+      var pcmTotal = 0;
+      var frameTimer = null;    // 40ms 发送定时器
+      var cloudReady = false;
+      var cloudFallbackTimer = null;
+      var lastFinalSeg = -1;
+
+      // 由 Streamlit 注入的参数
+      var cloudEnabled = false;
+      var backendUrl = "ws://localhost:8000/rtasr";
+      var xfyunAppid = "";   // 用户自己填的讯飞 AppID(为空则组件不连云端,直接走 Web Speech API)
+      var xfyunApikey = "";  // 用户自己填的讯飞接口密钥(可为空)
+
+      var startBtn = document.getElementById("startBtn");
+      var clearBtn = document.getElementById("clearBtn");
+      var langSel = document.getElementById("langSel");
+      var statusEl = document.getElementById("status");
+      var transcriptEl = document.getElementById("transcript");
+
+      function setStatus(text, kind) {
+        statusEl.textContent = text;
+        statusEl.className = "status" + (kind ? " " + kind : "");
+      }
+
+      function resetStartButton() {
+        startBtn.textContent = "🎙️ 开始录音";
+        startBtn.classList.remove("recording");
+      }
+
+      function renderTranscript() {
+        var full = (finalText + interimText).trim();
+        if (full) {
+          transcriptEl.textContent = full;
+          transcriptEl.classList.remove("placeholder");
+        } else {
+          transcriptEl.textContent = "识别结果会实时显示在这里…";
+          transcriptEl.classList.add("placeholder");
+        }
+        transcriptEl.scrollTop = transcriptEl.scrollHeight;
+        sendToParent("streamlit:setFrameHeight", { height: Math.max(320, document.body.scrollHeight + 20) });
+      }
+
+      // 边录边把「已定稿」文本回传 Python,供其同步跑 LLM 实时翻译。
+      function sendLive() {
+        var text = finalText.trim();
+        if (text && text !== lastSent) {
+          lastSent = text;
+          sendToParent("streamlit:setComponentValue", { value: { text: text, running: recording } });
+        }
+      }
+      function scheduleLive() {
+        if (sendTimer) { clearTimeout(sendTimer); }
+        sendTimer = setTimeout(sendLive, 700);
+      }
+
+      // ================= Web Speech API(兜底) =================
+      function startSpeech() {
+        recording = true;
+        startBtn.textContent = "⏹️ 停止录音";
+        startBtn.classList.add("recording");
+        setStatus("正在聆听(Web Speech)…", "live");
+
+        if (!SpeechRecognition) {
+          setStatus("当前浏览器不支持语音识别,请改用 Chrome 或 Edge。", "error");
+          recording = false;
+          resetStartButton();
+          return;
+        }
+        if (recognition) { try { recognition.abort(); } catch (e) {} }
+        recognition = new SpeechRecognition();
+        recognition.lang = langSel.value;
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = function () { setStatus("正在聆听…", "live"); };
+        recognition.onresult = function (event) {
+          var interim = "";
+          for (var i = event.resultIndex; i < event.results.length; i++) {
+            var result = event.results[i];
+            var t = result[0].transcript;
+            if (result.isFinal) { finalText += t; } else { interim += t; }
+          }
+          interimText = interim;
+          renderTranscript();
+          scheduleLive();
+        };
+        recognition.onerror = function (event) {
+          if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+            setStatus("麦克风权限被拒绝,请在浏览器地址栏允许麦克风访问。", "error");
+          } else if (event.error === "no-speech") {
+            setStatus("未检测到语音,请继续说话…", "live");
+          } else if (event.error === "network") {
+            setStatus("网络错误:Web Speech API 需要联网。", "error");
+          } else if (event.error === "aborted") {
+            // 手动停止/重启导致,忽略
+          } else {
+            setStatus("识别出错:" + event.error, "error");
+          }
+        };
+        recognition.onend = function () {
+          if (recording && mode === "speech") {
+            setTimeout(function () { try { recognition.start(); } catch (e) {} }, 150);
+          } else {
+            resetStartButton();
+            if (recording) { setStatus("已停止"); }
+          }
+        };
+        recognition.start();
+      }
+
+      function stopSpeech() {
+        recording = false;
+        mode = null;
+        if (sendTimer) { clearTimeout(sendTimer); sendTimer = null; }
+        if (recognition) { try { recognition.stop(); } catch (e) {} }
+        sendToParent("streamlit:setComponentValue", { value: { text: finalText.trim(), running: false } });
+      }
+
+      // ================= 讯飞云端实时转写 =================
+      function cloudLangFor(sel) {
+        if (sel === "zh-CN") return "cn";
+        if (sel === "en-US") return "en";
+        return null; // 粤语等未开通语种 → 走 Web Speech
+      }
+
+      function startCloud() {
+        recording = true;
+        mode = "cloud";
+        finalText = "";
+        interimText = "";
+        lastSent = "";
+        lastFinalSeg = -1;
+        cloudReady = false;
+        startBtn.textContent = "⏹️ 停止录音";
+        startBtn.classList.add("recording");
+        setStatus("正在连接云端实时转写…", "live");
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setStatus("浏览器不支持麦克风采集,改用 Web Speech API。", "live");
+          fallbackToSpeech();
+          return;
+        }
+
+        navigator.mediaDevices.getUserMedia({
+          audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
+        }).then(function (stream) {
+          if (!recording) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+          micStream = stream;
+          setupAudioPipeline(stream);
+          connectCloud();
+        }).catch(function (err) {
+          var denied = err && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
+          if (denied) {
+            setStatus("麦克风权限被拒绝,请在浏览器地址栏允许麦克风访问。", "error");
+            recording = false;
+            mode = null;
+            resetStartButton();
+          } else {
+            setStatus("麦克风采集失败,改用 Web Speech API。", "live");
+            fallbackToSpeech();
+          }
+        });
+      }
+
+      // 把麦克风流接到 AudioContext,产出 16k 单声道 Int16 PCM 到 pcmChunks。
+      function setupAudioPipeline(stream) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        if (audioCtx.state === "suspended") { audioCtx.resume(); }
+        var source = audioCtx.createMediaStreamSource(stream);
+        // ScriptProcessorNode 已标记废弃但兼容性最好;AudioWorklet 更现代但代码更重。
+        processor = audioCtx.createScriptProcessor(1024, 1, 1);
+        // 静音接到 destination,只为让节点持续触发 onaudioprocess,不播放回声。
+        var mute = audioCtx.createGain();
+        mute.gain.value = 0;
+        source.connect(processor);
+        processor.connect(mute);
+        mute.connect(audioCtx.destination);
+
+        processor.onaudioprocess = function (e) {
+          var pcm = downsampleTo16k(e.inputBuffer.getChannelData(0), audioCtx.sampleRate);
+          pcmChunks.push(pcm);
+          pcmTotal += pcm.length;
+        };
+      }
+
+      function connectCloud() {
+        var lang = cloudLangFor(langSel.value);
+        ws = new WebSocketCtor(backendUrl + "?lang=" + encodeURIComponent(lang));
+        ws.binaryType = "arraybuffer";
+
+        // 每 40ms 发一帧 1280 字节(640 采样点),与讯飞要求一致。
+        frameTimer = setInterval(function () {
+          if (cloudReady && ws && ws.readyState === 1) {
+            var frame = drainFrame();
+            if (frame) { ws.send(frame.buffer); }
+          }
+        }, 40);
+
+        // 3 秒内没连上云端就回退 Web Speech。
+        cloudFallbackTimer = setTimeout(function () {
+          if (recording && !cloudReady) {
+            setStatus("云端连接超时,改用 Web Speech API。", "live");
+            fallbackToSpeech();
+          }
+        }, 3000);
+
+        ws.onopen = function () {
+          setStatus("云端已连接,等待转写引擎就绪…", "live");
+          // 把自己的 key(可能为空)告诉后端;为空时后端拒绝、不会用任何内置 key。
+          ws.send(JSON.stringify({ type: "config", appid: xfyunAppid || "", apikey: xfyunApikey || "" }));
+        };
+
+        ws.onmessage = function (ev) {
+          var obj;
+          try { obj = JSON.parse(ev.data); } catch (e) { return; }
+          if (obj.type === "status" && obj.state === "started") {
+            cloudReady = true;
+            if (cloudFallbackTimer) { clearTimeout(cloudFallbackTimer); cloudFallbackTimer = null; }
+            setStatus("云端实时转写进行中,请说话…", "live");
+          } else if (obj.type === "result") {
+            var text = obj.text || "";
+            if (obj.final) {
+              if (obj.seg_id !== lastFinalSeg) {
+                finalText += text;
+                lastFinalSeg = obj.seg_id;
+              }
+              interimText = "";
+            } else {
+              interimText = text;
+            }
+            renderTranscript();
+            scheduleLive();
+          } else if (obj.type === "error") {
+            setStatus("云端转写错误:" + (obj.message || obj.code || ""), "error");
+            if (recording && !cloudReady) { fallbackToSpeech(); }
+          }
+        };
+
+        ws.onerror = function () {
+          if (recording && !cloudReady) { fallbackToSpeech(); }
+        };
+        ws.onclose = function () {
+          if (recording && !cloudReady) { fallbackToSpeech(); }
+        };
+      }
+
+      function drainFrame() {
+        if (pcmTotal < 640) { return null; }
+        var frame = new Int16Array(640);
+        var filled = 0;
+        while (filled < 640) {
+          var first = pcmChunks[0];
+          var need = 640 - filled;
+          if (first.length <= need) {
+            frame.set(first, filled);
+            filled += first.length;
+            pcmChunks.shift();
+          } else {
+            frame.set(first.subarray(0, need), filled);
+            pcmChunks[0] = first.subarray(need);
+            filled += need;
+          }
+        }
+        pcmTotal -= 640;
+        return frame;
+      }
+
+      function downsampleTo16k(float32, srcRate) {
+        var ratio = srcRate / 16000;
+        if (ratio === 1) { return float32ToInt16(float32); }
+        var outLen = Math.max(1, Math.round(float32.length / ratio));
+        var out = new Int16Array(outLen);
+        for (var i = 0; i < outLen; i++) {
+          var idx = Math.round(i * ratio);
+          if (idx >= float32.length) { idx = float32.length - 1; }
+          out[i] = f32ToS16(float32[idx]);
+        }
+        return out;
+      }
+      function float32ToInt16(float32) {
+        var out = new Int16Array(float32.length);
+        for (var i = 0; i < float32.length; i++) { out[i] = f32ToS16(float32[i]); }
+        return out;
+      }
+      function f32ToS16(s) {
+        s = Math.max(-1, Math.min(1, s));
+        return s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+
+      function stopCloud() {
+        recording = false;
+        mode = null;
+        if (ws && ws.readyState === 1) {
+          try { ws.send(JSON.stringify({ type: "end" })); } catch (e) {}
+        }
+        cleanupCloud();
+        sendToParent("streamlit:setComponentValue", { value: { text: finalText.trim(), running: false } });
+      }
+
+      function cleanupCloud() {
+        if (cloudFallbackTimer) { clearTimeout(cloudFallbackTimer); cloudFallbackTimer = null; }
+        if (frameTimer) { clearInterval(frameTimer); frameTimer = null; }
+        if (processor) { try { processor.disconnect(); } catch (e) {} processor = null; }
+        if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
+        if (micStream) { micStream.getTracks().forEach(function (t) { t.stop(); }); micStream = null; }
+        if (ws) { try { ws.close(); } catch (e) {} ws = null; }
+        pcmChunks = [];
+        pcmTotal = 0;
+        cloudReady = false;
+      }
+
+      // 云端失败时切回 Web Speech(先释放云端占用的麦克风)。
+      function fallbackToSpeech() {
+        cleanupCloud();
+        if (!recording) { return; }
+        mode = "speech";
+        startSpeech();
+      }
+
+      // ================= 主控 =================
+      function start() {
+        if (cloudEnabled && cloudLangFor(langSel.value)) {
+          startCloud();
+        } else {
+          startSpeech();
+        }
+      }
+
+      function stop() {
+        if (mode === "cloud") { stopCloud(); }
+        else { stopSpeech(); }
+      }
+
+      startBtn.addEventListener("click", function () {
+        if (recording) { stop(); } else { start(); }
+      });
+
+      clearBtn.addEventListener("click", function () {
+        finalText = "";
+        interimText = "";
+        lastSent = "";
+        renderTranscript();
+      });
+
+      langSel.addEventListener("change", function () {
+        if (recording) {
+          var wasRecording = true;
+          stop();
+          if (wasRecording) { start(); }
+        }
+      });
+
+      // ---------- 接收 Streamlit 传入的参数 ----------
+      window.addEventListener("message", function (e) {
+        var data = e.data;
+        if (!data) { return; }
+        if (data.type === "streamlit:render") {
+          var args = data.args || {};
+          if (args.lang) { langSel.value = args.lang; }
+          if (args.cloud_enabled !== undefined) { cloudEnabled = !!args.cloud_enabled; }
+          if (args.backend_url) { backendUrl = args.backend_url; }
+          if (args.xfyun_appid !== undefined) { xfyunAppid = String(args.xfyun_appid || ""); }
+          if (args.xfyun_apikey !== undefined) { xfyunApikey = String(args.xfyun_apikey || ""); }
+          if (data.theme) {
+            document.body.classList.toggle("dark", data.theme.base === "dark");
+          }
+        }
+      });
+
+      sendToParent("streamlit:componentReady", { apiVersion: 1 });
+      renderTranscript();
+    })();
+  </script>
+</body>
+</html>

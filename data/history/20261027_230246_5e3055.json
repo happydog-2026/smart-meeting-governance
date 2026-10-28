@@ -1,0 +1,37 @@
+{
+  "source": "实时字幕",
+  "duration": null,
+  "summary": {
+    "title": "通话连接测试",
+    "summary": "对话内容仅为反复的问候和喂喂喂等通话测试用语，未涉及任何实质议题、结论或待办事项。",
+    "topics": [],
+    "action_items": [],
+    "keywords": [
+      "通话测试",
+      "问候",
+      "无实质内容"
+    ]
+  },
+  "transcript": "怎么会。你好你好喂喂喂喂喂喂。你好你好。喂喂喂。喂喂喂。",
+  "source_segments": [
+    {
+      "start": 0.0,
+      "end": 0.5,
+      "speaker": "发言人1",
+      "text": "怎么会。你好你好喂喂喂喂喂喂。你好你好。喂喂喂。喂喂喂。"
+    }
+  ],
+  "corrected_text": "怎么会。你好你好喂喂喂喂喂喂。你好你好。喂喂喂。喂喂喂。",
+  "corrected_segments": [
+    {
+      "start": 0.0,
+      "end": 0.5,
+      "speaker": "发言人1",
+      "text": "怎么会。你好你好喂喂喂喂喂喂。你好你好。喂喂喂。喂喂喂。"
+    }
+  ],
+  "translated_summary": null,
+  "translated_text": null,
+  "translated_lang": "",
+  "has_timestamps": false
+}

@@ -1,0 +1,36 @@
+{
+  "source": "实时字幕",
+  "duration": null,
+  "summary": {
+    "title": "一串数字的陈述",
+    "summary": "对话仅包含发言人1说出的一串数字“12345678910”，未展开任何议题、结论或后续安排。",
+    "topics": [],
+    "action_items": [],
+    "keywords": [
+      "数字",
+      "12345678910"
+    ]
+  },
+  "transcript": "12345678910。",
+  "source_segments": [
+    {
+      "start": 0.0,
+      "end": 0.5,
+      "speaker": "发言人1",
+      "text": "12345678910。"
+    }
+  ],
+  "corrected_text": "12345678910。",
+  "corrected_segments": [
+    {
+      "start": 0.0,
+      "end": 0.5,
+      "speaker": "发言人1",
+      "text": "12345678910。"
+    }
+  ],
+  "translated_summary": null,
+  "translated_text": null,
+  "translated_lang": "",
+  "has_timestamps": false
+}

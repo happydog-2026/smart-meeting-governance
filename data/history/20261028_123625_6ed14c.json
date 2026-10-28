@@ -1,0 +1,56 @@
+{
+  "source": "本地录音",
+  "duration": 10.38,
+  "summary": {
+    "title": "通行与安全及人口国际上行路径的讨论",
+    "summary": "发言人1提出最终要落实到通行和实际安全，并提及人口是国际上行的路，但表述较为简略，未展开具体内容。对话中未形成明确结论或待办事项。",
+    "topics": [
+      {
+        "title": "通行与安全",
+        "points": [
+          "最终要落实到通行",
+          "强调实际的安全"
+        ],
+        "conclusion": ""
+      },
+      {
+        "title": "人口与国际上行路径",
+        "points": [
+          "人口是国际上行的路",
+          "提到只有一些目的"
+        ],
+        "conclusion": ""
+      }
+    ],
+    "action_items": [],
+    "keywords": [
+      "通行",
+      "安全",
+      "人口",
+      "国际上行",
+      "目的"
+    ]
+  },
+  "transcript": "最终要录到通行,实际的安全,人口是国际上行的路,只有一些目的。",
+  "source_segments": [
+    {
+      "start": 0.06,
+      "end": 8.66,
+      "text": "最终要录到通行,实际的安全,人口是国际上行的路,只有一些目的。",
+      "speaker": "发言人1"
+    }
+  ],
+  "corrected_text": "最终要落到通行,实际的安全,人口是国际上行的路,只有一些目的。",
+  "corrected_segments": [
+    {
+      "start": 0.06,
+      "end": 8.66,
+      "text": "最终要落到通行,实际的安全,人口是国际上行的路,只有一些目的。",
+      "speaker": "发言人1"
+    }
+  ],
+  "translated_summary": null,
+  "translated_text": null,
+  "translated_lang": "",
+  "has_timestamps": true
+}

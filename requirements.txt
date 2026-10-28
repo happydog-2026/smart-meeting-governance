@@ -1,0 +1,33 @@
+# ==== 语音识别 ====
+faster-whisper>=1.1.0
+# PyAV 14.x/16.x 与 faster-whisper 兼容;19.x 移除了 metadata_errors 参数,勿升级到 19+
+# 用范围而不是精确 ==,让不同 Python 版本能各自匹配到有预编译包的版本
+av>=14,<19
+
+# ==== LLM(OpenAI 兼容接口,DeepSeek 等)====
+openai>=1.40
+
+# ==== 说话人分离 ====
+# torch 建议装 CPU 版(pip install torch),否则默认会拉 CUDA 依赖
+torch
+funasr>=1.4
+modelscope>=1.20
+# fbank 特征提取后端(替代 torchaudio,更轻量)
+kaldi-native-fbank
+# 提供项目自带的 bin/ffmpeg.exe(funasr 加载音频用,免装系统 ffmpeg)
+imageio-ffmpeg
+
+# ==== 文本后处理(繁转简)====
+opencc-python-reimplemented>=0.1.7
+
+# ==== 前端(Streamlit)====
+streamlit>=1.40
+
+# ==== 服务端(实时转写中继)====
+fastapi>=0.115
+uvicorn[standard]>=0.30
+websockets>=12.0
+python-multipart>=0.0.9
+
+# ==== 测试 ====
+pytest>=8.0

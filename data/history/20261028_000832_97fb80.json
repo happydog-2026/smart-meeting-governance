@@ -1,0 +1,36 @@
+{
+  "source": "本地录音",
+  "duration": 6.36,
+  "summary": {
+    "title": "无实质内容的数字序列发言",
+    "summary": "发言人1仅说出一串数字（一二四五六七八九十），未提供任何可辨识的议题、观点或信息。对话中不存在可提炼的讨论内容、结论或待办事项。",
+    "topics": [],
+    "action_items": [],
+    "keywords": [
+      "数字序列",
+      "无实质内容"
+    ]
+  },
+  "transcript": "一二四五六七八九十",
+  "source_segments": [
+    {
+      "start": 0.41,
+      "end": 5.09,
+      "text": "一二四五六七八九十",
+      "speaker": "发言人1"
+    }
+  ],
+  "corrected_text": "一二四五六七八九十",
+  "corrected_segments": [
+    {
+      "start": 0.41,
+      "end": 5.09,
+      "text": "一二四五六七八九十",
+      "speaker": "发言人1"
+    }
+  ],
+  "translated_summary": null,
+  "translated_text": null,
+  "translated_lang": "",
+  "has_timestamps": true
+}

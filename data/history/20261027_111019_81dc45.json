@@ -1,0 +1,77 @@
+{
+  "source": "实时字幕",
+  "duration": null,
+  "summary": {
+    "title": "询问今日天气",
+    "summary": "发言人1询问今天天气情况，发言人2回答先是阴天。对话简短，未形成进一步讨论或安排。",
+    "topics": [
+      {
+        "title": "今日天气",
+        "points": [
+          "发言人1询问今天天气怎么样",
+          "发言人2回答先是阴天"
+        ],
+        "conclusion": "今天天气为阴天"
+      }
+    ],
+    "action_items": [],
+    "keywords": [
+      "天气",
+      "阴天"
+    ]
+  },
+  "transcript": "今天天气怎么样？先是。阴天。",
+  "source_segments": [
+    {
+      "start": 0.0,
+      "end": 0.5,
+      "speaker": "发言人1",
+      "text": "今天天气怎么样？"
+    },
+    {
+      "start": 1.0,
+      "end": 1.5,
+      "speaker": "发言人2",
+      "text": "先是。阴天。"
+    }
+  ],
+  "corrected_text": "今天天气怎么样？先是。阴天。",
+  "corrected_segments": [
+    {
+      "start": 0.0,
+      "end": 0.5,
+      "speaker": "发言人1",
+      "text": "今天天气怎么样？",
+      "text_translated": "How is the weather today?"
+    },
+    {
+      "start": 1.0,
+      "end": 1.5,
+      "speaker": "发言人2",
+      "text": "先是。阴天。",
+      "text_translated": "First, it's cloudy."
+    }
+  ],
+  "translated_summary": {
+    "title": "Asking about today's weather",
+    "summary": "Speaker 1 asked about today's weather conditions, and Speaker 2 answered that it was cloudy at first. The conversation was brief, and no further discussion or arrangements were made.",
+    "topics": [
+      {
+        "title": "Today's weather",
+        "points": [
+          "Speaker 1 asked what today's weather was like",
+          "Speaker 2 answered that it was cloudy at first"
+        ],
+        "conclusion": "Today's weather is cloudy"
+      }
+    ],
+    "action_items": [],
+    "keywords": [
+      "weather",
+      "cloudy"
+    ]
+  },
+  "translated_text": "发言人1:How is the weather today?\n发言人2:First, it's cloudy.",
+  "translated_lang": "英文",
+  "has_timestamps": false
+}
