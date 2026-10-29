@@ -601,6 +601,16 @@ def _bilingual_to_markdown(segments: list[dict], *, with_timestamp: bool = True)
     return "\n".join(lines)
 
 
+def _markdown_paragraphs(text: str) -> str:
+    """把多行文本整理成 markdown 段落:每个非空行之间用空行分隔。
+
+    markdown 里单换行会被折叠成一行,只有空行才是真正的段落分隔;
+    这里统一成空行,避免转写稿/译文整篇挤在一起。
+    """
+    blocks = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    return "\n\n".join(blocks)
+
+
 def _to_markdown(
     summary: dict,
     transcript_text: str,
@@ -642,7 +652,8 @@ def _to_markdown(
     if summary.get("keywords"):
         lines.append(f"**{L['keywords']}:** {L['join'].join(summary.get('keywords', []))}")
     heading = L["dialogue"] if is_dialogue else L["transcript"]
-    lines += ["", "---", "", f"## {heading}", "", transcript_text]
+    # 转写/译文里的单换行在 markdown 里会被折叠,转成空行分隔才能看出段落
+    lines += ["", "---", "", f"## {heading}", "", _markdown_paragraphs(transcript_text)]
     return "\n".join(lines)
 
 
@@ -1173,6 +1184,11 @@ language = {"自动检测": None, "中文 (zh)": "zh", "英文 (en)": "en"}[lang
 # ============ 标题(主界面 / 设置页共用) ============
 st.title("🎙️ 会议智治与跨语言沟通平台")
 
+# ============ 输入区标签页 ============
+# 顺序即界面顺序;常驻录音卡片只挂在「🎙️ 实时字幕」页(见下方 CSS 的 data-key)。
+_INPUT_TABS = ["🎧 上传音频", "🎙️ 实时字幕", "🎤 本地录音", "📝 粘贴文本"]
+_LIVE_TAB_INDEX = _INPUT_TABS.index("🎙️ 实时字幕")
+
 # ============ 常驻实时字幕组件 ============
 # 关键:无论停在哪个导航页都保持挂载。切换「⚙️ 设置」页填 key 时,若组件只渲染在
 # 「实时字幕」标签里,Streamlit 会因 st.stop() 跳过该标签而卸载 iframe,正在进行的
@@ -1189,10 +1205,20 @@ raw = _speech_recorder(
     xfyun_apikey=xfyun_apikey,
 )
 
-# 设置页 / 历史回看时隐藏常驻录音卡片(仍保持挂载,录音不中断)
-if nav == "⚙️ 设置" or st.session_state.get("view_run_id"):
+# 录音卡片只在「🎙️ 实时字幕」标签页可见:其它标签页 / 设置页 / 历史回看一律 CSS 隐藏,
+# 但 iframe 仍留在 DOM 里(display:none 不会卸载组件)。
+# 例外:录音进行中一律显示 —— 被隐藏的跨域 iframe 会被浏览器节流,组件里 40ms 的音频帧
+# 定时器一旦被拖慢,讯飞实时转写就会卡住(Web Speech 路径不受影响)。
+# 判断方式:Streamlit 1.66 的标签页按钮带 aria-selected 与 data-key(等于标签下标);
+# 页面没有标签页时(设置页 / 历史回看):has() 不成立,同样隐藏。需 Chrome / Edge 105+,
+# 与 Web Speech API 的浏览器要求一致。
+recording = bool(isinstance(raw, dict) and raw.get("running"))
+if not recording:
     st.markdown(
-        '<style>[data-testid="stCustomComponentV1"]{display:none;}</style>',
+        "<style>"
+        f'body:not(:has([role="tab"][aria-selected="true"][data-key="{_LIVE_TAB_INDEX}"])) '
+        '[data-testid="stCustomComponentV1"]{display:none;}'
+        "</style>",
         unsafe_allow_html=True,
     )
 
@@ -1219,9 +1245,7 @@ if st.session_state.get("view_run_id"):
     st.stop()
 
 # ============ 输入区 ============
-tab_audio, tab_live, tab_mic, tab_text = st.tabs(
-    ["🎧 上传音频", "🎙️ 实时字幕", "🎤 本地录音", "📝 粘贴文本"]
-)
+tab_audio, tab_live, tab_mic, tab_text = st.tabs(_INPUT_TABS)
 
 source_segments: list[dict] | None = None
 source_text: str = ""
@@ -1535,40 +1559,43 @@ if run:
                 api_key=llm_api_key,
                 base_url=llm_base_url,
             )
-            tr_future = (
-                pool2.submit(
-                    translate_segments,
-                    corrected,
-                    target=target,
-                    glossary=glossary,
-                    model=llm_model,
-                    api_key=llm_api_key,
-                    base_url=llm_base_url,
-                )
-                if target
-                else None
-            )
+            if target:
+                # 有说话人 → 逐段翻译(供双语对照);无说话人 → 全文直译,
+                # 交给 LLM 按上下文与长度分自然段落,避免逐句拼接挤成一段
+                if has_speaker:
+                    tr_future = pool2.submit(
+                        translate_segments,
+                        corrected,
+                        target=target,
+                        glossary=glossary,
+                        model=llm_model,
+                        api_key=llm_api_key,
+                        base_url=llm_base_url,
+                    )
+                else:
+                    tr_future = pool2.submit(
+                        translate,
+                        corrected_text,
+                        target=target,
+                        glossary=glossary,
+                        model=llm_model,
+                        api_key=llm_api_key,
+                        base_url=llm_base_url,
+                    )
+            else:
+                tr_future = None
             summary = deep_to_simplified(sum_future.result())
             try:
                 brief = to_simplified(brief_future.result() or "")
             except Exception:  # pragma: no cover - 网络/配额相关,精简总结失败不阻断主流程
                 brief = ""
-            seg_translations = tr_future.result() if tr_future else None
+            translation = tr_future.result() if tr_future else None
         finally:
             pool2.shutdown(wait=False)
 
         translated_summary = None
         translated_text = None
-        if seg_translations is not None:
-            corrected = [
-                {
-                    **s,
-                    "text_translated": (
-                        seg_translations[i] if i < len(seg_translations) else ""
-                    ),
-                }
-                for i, s in enumerate(corrected)
-            ]
+        if translation is not None:
             states["llm"] = ("running", f"翻译纪要成{translated_lang}…")
             draw_pipeline()
             translated_summary = translate_summary(
@@ -1579,9 +1606,18 @@ if run:
                 api_key=llm_api_key,
                 base_url=llm_base_url,
             )
-            # 整篇译文直接由逐段译文拼成,省掉一次重复的 LLM 调用
-            translated_text = (
-                render_dialogue(
+            if has_speaker:
+                # 逐段译文:既挂到每段上做双语对照,又拼成整篇对话译文
+                corrected = [
+                    {
+                        **s,
+                        "text_translated": (
+                            translation[i] if i < len(translation) else ""
+                        ),
+                    }
+                    for i, s in enumerate(corrected)
+                ]
+                translated_text = render_dialogue(
                     [
                         {
                             "start": s.get("start", 0.0),
@@ -1593,9 +1629,9 @@ if run:
                     ],
                     with_timestamp=False,
                 )
-                if has_speaker
-                else "".join(s.get("text_translated", "") for s in corrected)
-            )
+            else:
+                # 全文直译的结果已按上下文与长度分段,直接作为整篇译文
+                translated_text = translation
         states["llm"] = (
             "done",
             f"{len(summary.get('topics', []) or [])} 议题 · "

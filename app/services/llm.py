@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 from functools import lru_cache
 from typing import Any
@@ -467,6 +468,39 @@ def _split_text(text: str, max_chars: int = 1500) -> list[str]:
     return chunks
 
 
+_SENTENCE_ENDS = "。!?.;!?…"
+
+
+def _paragraphize(text: str, target_chars: int = 220) -> str:
+    """确保译文有自然段落:已有换行当段落边界,超长段落按「句末标点 + 长度」切段。
+
+    兜底小模型(如 qwen2.5:3b)未必按指令在译文里插空行,这里在句末标点处、
+    长度达到 target_chars 时断段,保证输出始终有段落、不会整篇挤成一段。
+    """
+    text = text.strip()
+    if not text:
+        return text
+    out: list[str] = []
+    # 先按任意换行拆开(空行 / 单换行都当段落边界)
+    for para in re.split(r"\n+", text):
+        para = para.strip()
+        if not para:
+            continue
+        if len(para) <= target_chars:
+            out.append(para)
+            continue
+        # 超长段落:逐字累积,在句末标点后、长度达标时断段
+        buf = ""
+        for ch in para:
+            buf += ch
+            if ch in _SENTENCE_ENDS and len(buf) >= target_chars:
+                out.append(buf.strip())
+                buf = ""
+        if buf.strip():
+            out.append(buf.strip())
+    return "\n\n".join(out)
+
+
 def translate(
     text: str,
     *,
@@ -476,19 +510,31 @@ def translate(
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> str:
-    """多语种翻译(长文本自动分块)。target 为语言代码,见 app/services/langs.py。"""
+    """多语种翻译(长文本自动分块)。target 为语言代码,见 app/services/langs.py。
+
+    会保留原文段落结构:先按空行分段,段内超长再按句末标点切块;同时要求
+    LLM 把译文按语义分成自然段落(空行分隔),避免整篇挤成一段。
+    """
     direction = langs.prompt_name(target)
     glossary_block = f"\n术语表(严格按此翻译):{glossary.strip()}\n" if glossary.strip() else ""
-    parts = []
-    for chunk in _split_text(text):
-        user = (
-            f"{glossary_block}\n"
-            f"请将以下内容翻译成{direction}:\n{chunk}\n\n"
-            f'输出 JSON:{{"translation": "译文"}}'
-        )
-        data = _chat_json(TRANSLATE_SYSTEM, user, model=model, api_key=api_key, base_url=base_url)
-        parts.append(data.get("translation", ""))
-    return "\n".join(parts)
+    # 按空行先分成段落;没有空行的整段文本(如 ASR 转写)当作一个段落,交给 LLM 自己分
+    paragraphs = [p for p in re.split(r"\n\s*\n", text.strip()) if p.strip()] or [text.strip()]
+    translated_paras: list[str] = []
+    for para in paragraphs:
+        parts: list[str] = []
+        for chunk in _split_text(para):
+            user = (
+                f"{glossary_block}\n"
+                f"请将以下内容翻译成{direction}:\n{chunk}\n\n"
+                "请把译文按语义分成自然段落,段落之间用一个空行分隔,不要输出成一整段。\n"
+                '输出 JSON:{"translation": "译文"}'
+            )
+            data = _chat_json(TRANSLATE_SYSTEM, user, model=model, api_key=api_key, base_url=base_url)
+            parts.append(data.get("translation", ""))
+        # 同一段落被切块时用换行拼接(避免各块译文首尾相接),段落之间再补空行
+        translated_paras.append("\n".join(parts))
+    # _paragraphize 兜底:小模型不插空行时,按句末标点 + 长度强制分段
+    return _paragraphize("\n\n".join(translated_paras))
 
 
 def translate_summary(
@@ -542,6 +588,8 @@ def _translate_segments_chunk(
         f"{glossary_block}\n"
         f"请把下列 {len(texts)} 条对话分段逐条翻译成{direction},"
         f"条数必须保持 {len(texts)} 条:\n{numbered}\n\n"
+        "如果某条内容较长,把该条译文按语义分成自然段落(段落之间用一个空行分隔),"
+        "每条译文仍只占数组里的一个元素。\n"
         f'输出 JSON:{{"translations": ["第1条译文", "第2条译文", ...]}}'
     )
     data = _chat_json(
