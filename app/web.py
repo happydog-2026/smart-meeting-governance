@@ -75,23 +75,25 @@ _CSS = """
 <style>
 /* 步骤流水线卡片 */
 .mc-pipeline { display:flex; gap:10px; flex-wrap:wrap; margin:4px 0 14px; }
+/* 中性色一律用半透明灰:亮 / 暗两套主题下都能读,不用关心当前是哪套 */
 .mc-step { flex:1 1 160px; min-width:140px; border-radius:12px; padding:12px 14px;
-           background:#f8fafc; border:1px solid #e2e8f0; transition:all .2s ease; }
-.mc-step.running { background:#eff6ff; border-color:#93c5fd;
-                   box-shadow:0 0 0 3px rgba(59,130,246,.12); }
-.mc-step.done { background:#f0fdf4; border-color:#86efac; }
-.mc-step.failed { background:#fef2f2; border-color:#fca5a5; }
+           background:rgba(127,127,127,.10); border:1px solid rgba(127,127,127,.28);
+           transition:all .2s ease; }
+.mc-step.running { background:rgba(59,130,246,.14); border-color:rgba(59,130,246,.55);
+                   box-shadow:0 0 0 3px rgba(59,130,246,.14); }
+.mc-step.done { background:rgba(34,197,94,.14); border-color:rgba(34,197,94,.5); }
+.mc-step.failed { background:rgba(239,68,68,.14); border-color:rgba(239,68,68,.5); }
 .mc-step .mc-icon { font-size:15px; }
-.mc-step .mc-name { font-size:13px; font-weight:600; color:#0f172a; margin-top:2px; }
-.mc-step .mc-detail { font-size:11.5px; color:#64748b; margin-top:3px; line-height:1.5; }
-.mc-step.running .mc-detail { color:#2563eb; }
+.mc-step .mc-name { font-size:13px; font-weight:600; color:inherit; margin-top:2px; }
+.mc-step .mc-detail { font-size:11.5px; color:inherit; opacity:.72; margin-top:3px; line-height:1.5; }
+.mc-step.running .mc-detail { color:#3b82f6; opacity:1; }
 /* 实时转写卡片 */
-.mc-live { border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px;
-           background:#fff; max-height:300px; overflow-y:auto; }
+.mc-live { border:1px solid rgba(127,127,127,.28); border-radius:12px; padding:12px 14px;
+           background:rgba(127,127,127,.06); max-height:300px; overflow-y:auto; }
 .mc-live-head { font-size:12px; margin-bottom:8px; display:flex; gap:8px; align-items:center; }
 .mc-live-row { display:flex; gap:10px; margin:4px 0; }
-.mc-live-time { flex:0 0 48px; color:#94a3b8; font-size:12px; font-variant-numeric:tabular-nums; }
-.mc-live-text { flex:1; line-height:1.65; color:#1e293b; }
+.mc-live-time { flex:0 0 48px; color:inherit; opacity:.55; font-size:12px; font-variant-numeric:tabular-nums; }
+.mc-live-text { flex:1; line-height:1.65; color:inherit; }
 /* 实时转写:灵动动画(呼吸圆点 / 最新一句滑入 / 打字光标) */
 .mc-live-dot { display:inline-block; width:8px; height:8px; border-radius:50%;
                background:#22c55e; margin-right:6px; vertical-align:middle;
@@ -105,15 +107,15 @@ _CSS = """
                   vertical-align:text-bottom; margin-left:2px; animation:mcBlink 1s step-end infinite; }
 @keyframes mcBlink { 0%,100%{opacity:1;} 50%{opacity:0;} }
 /* 精简总结 */
-.mc-brief { border-left:4px solid #2563eb; background:#f8fafc; border-radius:8px;
-            padding:12px 16px; line-height:1.7; color:#0f172a; margin:6px 0 4px; }
+.mc-brief { border-left:4px solid #2563eb; background:rgba(127,127,127,.10); border-radius:8px;
+            padding:12px 16px; line-height:1.7; color:inherit; margin:6px 0 4px; }
 </style>
 """
 
 
 def _inject_css() -> None:
-    """注入全局样式(视觉美化 + 用户调色)。"""
-    st.markdown(_CSS + _theme_css(), unsafe_allow_html=True)
+    """注入全局样式(自定义组件美化)。配色跟随 Streamlit 当前主题。"""
+    st.markdown(_CSS, unsafe_allow_html=True)
 
 
 def _pipeline_html(states: dict[str, tuple[str, str]]) -> str:
@@ -196,50 +198,12 @@ def _ollama_available() -> bool:
     return settings.ollama_model.split(":")[0] in names
 
 
-# ============ 界面设置(调色)============
-_UI_SETTINGS_PATH = ROOT / "data" / "ui_settings.json"
-# 两种配色:亮色 / 暗色(对应 Streamlit 自带的明暗两套主题)
-_THEME_MODES = ["亮色", "暗色"]
-
-
-def _load_ui_settings() -> dict:
-    """读取界面设置(主题模式),跨启动记住用户的调色。"""
-    try:
-        return json.loads(_UI_SETTINGS_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-def _save_ui_settings(data: dict) -> None:
-    """把界面设置写入本地文件,下次启动自动恢复。"""
-    _UI_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _UI_SETTINGS_PATH.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-
-
-def _theme_css() -> str:
-    """根据已保存的主题生成 CSS 覆盖(亮 / 暗两套)。"""
-    mode = _load_ui_settings().get("mode", "亮色")
-    if mode == "暗色":
-        root = (
-            "--background-color:#0f172a;"
-            "--secondary-background-color:#1e293b;"
-            "--text-color:#e2e8f0;"
-        )
-        extra = (
-            '[data-testid="stAppViewContainer"]{background:#0f172a;}'
-            '[data-testid="stSidebar"]{background:#1e293b;}'
-            '[data-testid="stHeader"]{background:transparent;}'
-        )
-    else:
-        root = (
-            "--background-color:#ffffff;"
-            "--secondary-background-color:#f0f2f6;"
-            "--text-color:#1f2937;"
-        )
-        extra = '[data-testid="stAppViewContainer"]{background:#ffffff;}'
-    return f"<style>:root{{{root}}}{extra}</style>"
+# ============ 主题 ============
+# 明暗主题交给 Streamlit 自己管(右上角「⋮」→ 设置 → 主题;默认跟随系统)。
+# 曾经这里用一份手写的 CSS 变量覆盖(:root{--background-color...})来做亮/暗切换,
+# 但 Streamlit 1.66 的主题是编译进 emotion 样式的、并不消费这些变量:
+# 结果是「容器背景被强制刷白、文字还是原主题的浅色」,暗色下白底白字糊成一片。
+# 现在不再覆盖任何基础配色,自定义组件(.mc-*)也一律用半透明中性色,两套主题通用。
 
 
 def _llm_runtime_config() -> tuple[str, str, str, bool]:
@@ -276,16 +240,12 @@ def _open_run(run_id: str) -> None:
 
 
 def _render_settings() -> None:
-    """渲染「设置」页:调色 + 两个 API Key + 历史记录。"""
-    st.subheader("🎨 调色")
-    ui = _load_ui_settings()
-    mode = st.selectbox(
-        "主题模式", _THEME_MODES, index=_THEME_MODES.index(ui.get("mode", "亮色"))
+    """渲染「设置」页:主题说明 + 两个 API Key + 历史记录。"""
+    st.subheader("🎨 主题")
+    st.caption(
+        "明暗主题用右上角「⋮」→ 设置 → 主题切换(默认跟随系统);"
+        "界面配色全部跟随 Streamlit 主题,亮色 / 暗色下都能正常显示。"
     )
-    if mode != ui.get("mode"):
-        _save_ui_settings({"mode": mode})
-        st.rerun()  # 立即用新配色重新注入 CSS
-    st.caption("亮色 / 暗色两套配色;暗色为界面级深色主题。")
 
     st.divider()
     st.subheader("🔑 大模型 (LLM)")
@@ -478,7 +438,7 @@ def _render_dialogue(
         color = colors.get(sp, "#6b7280")
         text = _html.escape(t.get("text", ""))
         time_html = (
-            f'<div style="flex:0 0 58px;font-size:12px;color:#94a3b8;padding-top:5px;">'
+            f'<div style="flex:0 0 58px;font-size:12px;color:inherit;opacity:.5;padding-top:5px;">'
             f'{format_time(t.get("start", 0))}</div>'
             if with_timestamp
             else ""
@@ -555,7 +515,7 @@ def _render_dialogue_bilingual(
         translated = _html.escape(t.get("translated", ""))
         # 译文为空(翻译失败)时只显示原文,不留空行
         translated_html = (
-            f'<div style="margin-top:6px;color:#64748b;line-height:1.7;">{translated}</div>'
+            f'<div style="margin-top:6px;color:inherit;opacity:.65;line-height:1.7;">{translated}</div>'
             if translated
             else ""
         )
@@ -568,7 +528,7 @@ def _render_dialogue_bilingual(
         )
         blocks.append(
             '<div style="display:flex;gap:10px;margin:14px 0;align-items:flex-start;">'
-            f'<div style="flex:0 0 58px;font-size:12px;color:#94a3b8;padding-top:5px;">'
+            f'<div style="flex:0 0 58px;font-size:12px;color:inherit;opacity:.5;padding-top:5px;">'
             f'{format_time(t.get("start", 0)) if (has_speaker and with_timestamp) else ""}</div>'
             f"{speaker_html}"
             f'<div style="flex:1;line-height:1.75;">'
@@ -1385,8 +1345,8 @@ if run:
                 more = len(live_segments) - len(recent)
                 if seg is None:
                     head = (
-                        '<div class="mc-live-head"><span style="color:#059669;font-weight:600;">'
-                        f"✅ 转写完成</span><span style=\"color:#64748b;\">共 {len(live_segments)} 段</span></div>"
+                        '<div class="mc-live-head"><span style="color:#10b981;font-weight:600;">'
+                        f"✅ 转写完成</span><span style=\"color:inherit;opacity:.65;\">共 {len(live_segments)} 段</span></div>"
                     )
                 else:
                     total = (
@@ -1396,12 +1356,12 @@ if run:
                         else ""
                     )
                     head = (
-                        '<div class="mc-live-head"><span style="color:#2563eb;font-weight:600;">'
+                        '<div class="mc-live-head"><span style="color:#3b82f6;font-weight:600;">'
                         '<span class="mc-live-dot"></span>'
-                        f"实时转写中</span><span style=\"color:#64748b;\">"
+                        f"实时转写中</span><span style=\"color:inherit;opacity:.65;\">"
                         f"{len(live_segments)} 段 · {format_time(seg.end)}{total}</span>"
                         + (
-                            f'<span style="color:#94a3b8;">(上方省略 {more} 段)</span>'
+                            f'<span style="color:inherit;opacity:.5;">(上方省略 {more} 段)</span>'
                             if more > 0
                             else ""
                         )

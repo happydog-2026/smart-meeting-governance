@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import struct
 import subprocess
 import sys
 import venv
@@ -26,7 +27,7 @@ VENV_DIR = ROOT / ".venv"
 VENV_PY = VENV_DIR / ("Scripts/python.exe" if IS_WIN else "bin/python")
 REQUIREMENTS = ROOT / "requirements.txt"
 
-MIN_PY = (3, 9)
+MIN_PY = (3, 10)  # modelscope 新版要求 >=3.10;更低的 Python 会解析出老版本依赖
 MAX_PY = (3, 14)  # 3.14+ 时 torch/funasr 可能还没有安装包
 
 # 轻量依赖:真实 import 一次,能顺带查出传递依赖(sniffio/pydantic/httpx...)缺失
@@ -127,13 +128,26 @@ def main() -> int:
 
     ver = sys.version_info[:2]
     if ver < MIN_PY:
-        return _fail(f"当前 Python 版本过低({sys.version}),需要 Python 3.9 及以上。")
+        return _fail(
+            f"当前 Python 版本过低({sys.version}),需要 Python 3.10 及以上"
+            "(推荐 3.11~3.13)。\n"
+            "       版本过低会让 pip 装到老版依赖,触发 opencc 等 C++ 包源码编译而失败。"
+        )
     if ver >= MAX_PY:
         print(
             f"\n[提示] 检测到 Python {sys.version_info.major}.{sys.version_info.minor},"
             " 部分依赖(如 torch)可能尚无安装包。"
         )
         print("       若安装失败,建议改装 Python 3.11~3.13 后重试。")
+
+    # 32 位 / ARM 版 Python 匹配不到 opencc 等 C++ 包的预编译轮子,会退化成源码编译,
+    # 而编译需要 Visual C++ 生成环境(普通电脑没有),表现为卡在 "Building wheel for opencc"。
+    if IS_WIN and struct.calcsize("P") * 8 != 64:
+        return _fail(
+            "检测到 32 位 Python。本项目依赖的 opencc 等包只提供 64 位预编译版本,"
+            "32 位会退化为源码编译(需 Visual C++ 编译环境),通常会失败。\n"
+            "       请安装 64 位(x86-64)Python 3.11~3.13 后重试。"
+        )
 
     # ---- 1. 确保虚拟环境存在 ----
     if not VENV_PY.exists():
@@ -150,6 +164,10 @@ def main() -> int:
 
     if missing:
         print(f"    缺少:{'、'.join(missing)}")
+        # 先升级安装工具:Python 3.12+ 的 venv 默认不带 setuptools/wheel,缺了它们会让
+        # 不少包退化成 legacy setup.py install / 源码编译,更容易失败。
+        print("    ==> 准备安装工具(pip / setuptools / wheel)...", flush=True)
+        _pip(VENV_PY, ["--upgrade", "pip", "setuptools", "wheel"])
         print("    正在自动补装(需联网,请勿关闭窗口)...")
         # 先按名字精确补装(能直接补上 sniffio 这类传递依赖)
         ok = _pip(VENV_PY, missing)

@@ -34,6 +34,7 @@ bash 启动.sh
 | 双击 `bin\ffmpeg.exe` 刷出一堆英文后退出码 1 | 点错文件了 | 那是程序内部调用的工具，**不要双击**，请双击 `start_web.bat` |
 | 提示 `Python not found` | 没装 Python / 没勾 PATH | 装 Python 3.11~3.13，勾选 `Add python.exe to PATH` |
 | 依赖安装失败 | 网络不通 / Python 版本太新 | 换网络重试；或改装 Python 3.11~3.13 |
+| 卡在 `Building wheel for opencc (pyproject.toml)` 很久或报编译错误 | 装的是 **32 位 / ARM 版 / 3.9 及以下** 的 Python，匹配不到 opencc 预编译包，退化成源码编译（需 Visual C++ 环境） | 卸载后改装 **64 位（x86-64）Python 3.11~3.13**，再删掉项目里的 `.venv` 文件夹重跑 |
 | 提示「创建虚拟环境失败」 | 路径带中文/空格 | 移到 `D:\meeting-ai` 这类纯英文路径 |
 | 网页报 `ModuleNotFoundError: No module named 'xxx'` | 之前依赖装了一半（网络中断/窗口被关） | 重新双击 `start_web.bat`，启动器会自动体检并补齐；仍不行就删掉 `.venv` 文件夹再双击 |
 | 想看清报错 | 黑窗被关闭 | 打开 CMD，`cd` 到项目目录，手动运行 `run.py`（或 `python run.py`） |
