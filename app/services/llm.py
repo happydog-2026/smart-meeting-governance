@@ -219,6 +219,63 @@ def summarize(
     return _chat_json(SUMMARY_SYSTEM, user, model=model, api_key=api_key, base_url=base_url)
 
 
+BRIEF_SYSTEM = (
+    "你是会议纪要撰写助手。请把整场会议浓缩成一篇小篇幅总结,"
+    "篇幅控制在 100~200 字,用一段话讲清:会议主题、主要结论、关键待办。"
+    "只依据会议内容,不编造。输出严格 JSON。"
+)
+
+
+def brief_summary(
+    text: str,
+    *,
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> str:
+    """生成一篇小篇幅总结(区别于结构化纪要,给用户一段可直接引用的浓缩版)。"""
+    user = (
+        f"会议内容:\n{text}\n\n"
+        f'请输出 JSON:{{"brief": "小篇幅总结"}}'
+    )
+    data = _chat_json(BRIEF_SYSTEM, user, model=model, api_key=api_key, base_url=base_url)
+    return str(data.get("brief") or data.get("summary") or "").strip()
+
+
+QA_SYSTEM = (
+    "你是会议内容问答助手。请只依据给定的会议内容回答用户问题,"
+    "不要编造会议中没有的信息;若会议内容里找不到答案,就如实说明「会议中未提及」。"
+    "用户也可能要求你总结、提炼、整理成纪要或待办清单,按用户要求完成。"
+    "输出严格 JSON。"
+)
+
+
+def ask_meeting(
+    text: str,
+    question: str,
+    *,
+    history: list[dict] | None = None,
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> str:
+    """就会议内容问答(可带历史问答上下文,支持追问与按需生成总结/纪要)。"""
+    history_block = ""
+    if history:
+        turns = "\n".join(
+            f"问:{h.get('q', '')}\n答:{h.get('a', '')}" for h in history[-6:]
+        )
+        history_block = f"\n此前问答(用于理解追问的上下文):\n{turns}\n"
+    user = (
+        f"会议内容:\n{text}\n"
+        f"{history_block}\n"
+        f"用户问题:\n{question}\n\n"
+        f'请输出 JSON:{{"answer": "你的回答"}}'
+    )
+    data = _chat_json(QA_SYSTEM, user, model=model, api_key=api_key, base_url=base_url)
+    return str(data.get("answer") or "").strip()
+
+
 SPEAKER_ANNOTATE_SYSTEM = (
     "你是会议对话说话人标注助手。\n"
     "你会收到一段没有标注说话人的转写/对话文本。请把它切分成若干段发言,"

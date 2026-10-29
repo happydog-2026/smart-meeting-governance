@@ -27,7 +27,13 @@ from app.config import settings  # noqa: E402
 from app.services.asr import build_initial_prompt, transcribe_file  # noqa: E402
 from app.services.audio import probe_duration  # noqa: E402
 from app.services.diarize import diarize  # noqa: E402
-from app.services.llm import annotate_speakers, correct_transcript, summarize  # noqa: E402
+from app.services.llm import (  # noqa: E402
+    annotate_speakers,
+    ask_meeting,
+    brief_summary,
+    correct_transcript,
+    summarize,
+)
 from app.services.translate import translate, translate_segments, translate_summary  # noqa: E402
 from app.services.speaker import (  # noqa: E402
     assign_speakers,
@@ -75,6 +81,21 @@ _CSS = """
 .mc-live-row { display:flex; gap:10px; margin:4px 0; }
 .mc-live-time { flex:0 0 48px; color:#94a3b8; font-size:12px; font-variant-numeric:tabular-nums; }
 .mc-live-text { flex:1; line-height:1.65; color:#1e293b; }
+/* 实时转写:灵动动画(呼吸圆点 / 最新一句滑入 / 打字光标) */
+.mc-live-dot { display:inline-block; width:8px; height:8px; border-radius:50%;
+               background:#22c55e; margin-right:6px; vertical-align:middle;
+               animation:mcPulse 1.2s ease-in-out infinite; }
+@keyframes mcPulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.35;transform:scale(.65);} }
+.mc-live-row.latest { background:linear-gradient(90deg, rgba(59,130,246,.07), transparent);
+                      border-radius:8px; margin-left:-6px; padding-left:6px;
+                      animation:mcFadeUp .35s ease both; }
+@keyframes mcFadeUp { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+.mc-live-cursor { display:inline-block; width:2px; height:1.05em; background:#2563eb;
+                  vertical-align:text-bottom; margin-left:2px; animation:mcBlink 1s step-end infinite; }
+@keyframes mcBlink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+/* 精简总结 */
+.mc-brief { border-left:4px solid #2563eb; background:#f8fafc; border-radius:8px;
+            padding:12px 16px; line-height:1.7; color:#0f172a; margin:6px 0 4px; }
 </style>
 """
 
@@ -232,6 +253,17 @@ def _llm_runtime_config() -> tuple[str, str, str, bool]:
     return key, base_url, model, using_ollama
 
 
+def _open_run(run_id: str) -> None:
+    """历史记录「查看」按钮的回调:切到主界面并打开该条记录。
+
+    必须放在按钮回调里,不能写在 if button 分支内:侧边栏 radio 的 key 就是 nav,
+    控件实例化后再改 st.session_state["nav"] 会抛 StreamlitWidgetAlreadyInstantiatedError。
+    回调在控件实例化之前执行,因此这里改 nav 是安全的。
+    """
+    st.session_state["view_run_id"] = run_id
+    st.session_state["nav"] = "📝 主界面"
+
+
 def _render_settings() -> None:
     """渲染「设置」页:调色 + 两个 API Key + 历史记录。"""
     st.subheader("🎨 调色")
@@ -342,10 +374,13 @@ def _render_settings() -> None:
                     f"{r['n_topics'] or 0} 议题 · {r['n_actions'] or 0} 待办"
                 )
                 b1, b2 = st.columns(2)
-                if b1.button("查看", key=f"view_{r['id']}", use_container_width=True):
-                    st.session_state["view_run_id"] = r["id"]
-                    st.session_state["nav"] = "主界面"
-                    st.rerun()
+                b1.button(
+                    "查看",
+                    key=f"view_{r['id']}",
+                    use_container_width=True,
+                    on_click=_open_run,
+                    args=(r["id"],),
+                )
                 if b2.button("删除", key=f"del_{r['id']}", use_container_width=True):
                     delete_run(r["id"])
                     st.rerun()
@@ -551,17 +586,20 @@ def _to_markdown(
     *,
     is_dialogue: bool = False,
     lang: str = "zh",
+    brief: str = "",
 ) -> str:
     """把摘要渲染成 Markdown,便于答辩展示。lang="en" 时使用英文标题。"""
     L = {
-        "zh": {"title": "会议纪要", "actions": "待办事项", "conclusion": "结论",
+        "zh": {"title": "会议纪要", "brief": "精简总结", "actions": "待办事项", "conclusion": "结论",
                "keywords": "关键词", "dialogue": "对话记录(按讲话人)", "transcript": "原始转录(校对后)",
                "owner": "负责人", "due": "截止", "join": "、"},
-        "en": {"title": "Meeting Minutes", "actions": "Action Items", "conclusion": "Conclusion",
+        "en": {"title": "Meeting Minutes", "brief": "Brief Summary", "actions": "Action Items", "conclusion": "Conclusion",
                "keywords": "Keywords", "dialogue": "Dialogue (by speaker)", "transcript": "Transcript (corrected)",
                "owner": "Owner", "due": "Due", "join": ", "},
     }[lang]
     lines = [f"# {summary.get('title') or L['title']}", ""]
+    if brief:
+        lines += [f"**{L['brief']}:** {brief}", ""]
     if summary.get("summary"):
         lines += [summary["summary"], ""]
     for topic in summary.get("topics", []) or []:
@@ -587,6 +625,23 @@ def _to_markdown(
     return "\n".join(lines)
 
 
+def _qa_history(msgs: list[dict]) -> list[dict]:
+    """把问答消息 [{role, content}] 折成 [{q, a}],只保留已完成的回合作为追问上下文。"""
+    pairs = []
+    i = 0
+    while i < len(msgs):
+        if (
+            msgs[i].get("role") == "user"
+            and i + 1 < len(msgs)
+            and msgs[i + 1].get("role") == "assistant"
+        ):
+            pairs.append({"q": msgs[i]["content"], "a": msgs[i + 1]["content"]})
+            i += 2
+        else:
+            i += 1
+    return pairs
+
+
 def _render_result(result: dict) -> None:
     """渲染一次运行(或历史记录)的完整结果:纪要 + 对话 + 导出。
 
@@ -605,8 +660,12 @@ def _render_result(result: dict) -> None:
     has_translation = bool(translated_summary or translated_text)
     md_lang = "en" if translated_lang == "英文" else "zh"
     show_time = bool(result.get("has_timestamps", True))
+    brief = result.get("brief") or ""
 
     st.divider()
+    if brief:
+        st.subheader("📌 精简总结")
+        st.markdown(f'<div class="mc-brief">{_html.escape(brief)}</div>', unsafe_allow_html=True)
     st.subheader("📋 结构化纪要")
 
     c1, c2 = st.columns([3, 1])
@@ -818,6 +877,7 @@ def _render_result(result: dict) -> None:
         export_data = {
             "source": source_name,
             "summary": summary,
+            "brief": brief,
             "transcript": source_text,
             "corrected_text": corrected_text,
             "corrected_segments": corrected,
@@ -839,6 +899,7 @@ def _render_result(result: dict) -> None:
                 summary,
                 render_dialogue(corrected, with_timestamp=show_time) if n_speakers else corrected_text,
                 is_dialogue=bool(n_speakers),
+                brief=brief,
             ),
             file_name=f"{source_name}.md",
             mime="text/markdown",
@@ -862,6 +923,47 @@ def _render_result(result: dict) -> None:
                 file_name=f"{source_name}.{lang_suffix}.md",
                 mime="text/markdown",
             )
+
+    # ===== 会议问答:就会议内容提问,或按需生成总结 / 纪要 =====
+    st.divider()
+    st.subheader("💬 会议问答")
+    st.caption("就本场会议提问,或让我按你的要求生成总结、纪要、待办清单。")
+
+    qa_sig = hashlib.md5(
+        (source_name + corrected_text).encode("utf-8")
+    ).hexdigest()[:8]
+    qa_key = f"qa_{qa_sig}"
+    if qa_key not in st.session_state:
+        st.session_state[qa_key] = []
+
+    for msg in st.session_state[qa_key]:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    if qa_prompt := st.chat_input("就会议内容提问…", key=f"qa_input_{qa_sig}"):
+        st.session_state[qa_key].append({"role": "user", "content": qa_prompt})
+        with st.chat_message("user"):
+            st.markdown(qa_prompt)
+        context = (
+            render_dialogue(corrected, with_timestamp=False)
+            if n_speakers
+            else corrected_text
+        )
+        with st.chat_message("assistant"):
+            with st.spinner("思考中…"):
+                try:
+                    answer = ask_meeting(
+                        context,
+                        qa_prompt,
+                        history=_qa_history(st.session_state[qa_key]),
+                        model=llm_model,
+                        api_key=llm_api_key,
+                        base_url=llm_base_url,
+                    )
+                except Exception as exc:  # pragma: no cover - 网络/配额相关
+                    answer = f"⚠️ 问答失败:{exc}"
+            st.markdown(answer)
+        st.session_state[qa_key].append({"role": "assistant", "content": answer})
 
 
 st.set_page_config(page_title="会议智治", page_icon="🎙️", layout="wide")
@@ -891,7 +993,7 @@ xfyun_apikey = st.session_state.get("xfyun_apikey", "")
 
 # ============ 侧边栏配置 ============
 with st.sidebar:
-    st.session_state.setdefault("nav", "主界面")
+    st.session_state.setdefault("nav", "📝 主界面")
     nav = st.radio(
         "页面",
         ["📝 主界面", "⚙️ 设置"],
@@ -1141,7 +1243,8 @@ if run:
                     )
                     head = (
                         '<div class="mc-live-head"><span style="color:#2563eb;font-weight:600;">'
-                        f"🔊 实时转写中</span><span style=\"color:#64748b;\">"
+                        '<span class="mc-live-dot"></span>'
+                        f"实时转写中</span><span style=\"color:#64748b;\">"
                         f"{len(live_segments)} 段 · {format_time(seg.end)}{total}</span>"
                         + (
                             f'<span style="color:#94a3b8;">(上方省略 {more} 段)</span>'
@@ -1150,12 +1253,17 @@ if run:
                         )
                         + "</div>"
                     )
-                rows = "".join(
-                    f'<div class="mc-live-row"><span class="mc-live-time">'
-                    f'{format_time(s["start"])}</span>'
-                    f'<span class="mc-live-text">{_html.escape(s["text"])}</span></div>'
-                    for s in recent
-                )
+                rows = []
+                for i, s in enumerate(recent):
+                    is_latest = seg is not None and i == len(recent) - 1
+                    cls = "mc-live-row latest" if is_latest else "mc-live-row"
+                    cursor = '<span class="mc-live-cursor"></span>' if is_latest else ""
+                    rows.append(
+                        f'<div class="{cls}"><span class="mc-live-time">'
+                        f'{format_time(s["start"])}</span>'
+                        f'<span class="mc-live-text">{_html.escape(s["text"])}{cursor}</span></div>'
+                    )
+                rows = "".join(rows)
                 live_ph.markdown(
                     f'<div class="mc-live">{head}{rows}</div>', unsafe_allow_html=True
                 )
@@ -1281,10 +1389,17 @@ if run:
         )
         draw_pipeline()
 
-        pool2 = ThreadPoolExecutor(max_workers=2)
+        pool2 = ThreadPoolExecutor(max_workers=3)
         try:
             sum_future = pool2.submit(
                 summarize,
+                summary_input,
+                model=llm_model,
+                api_key=llm_api_key,
+                base_url=llm_base_url,
+            )
+            brief_future = pool2.submit(
+                brief_summary,
                 summary_input,
                 model=llm_model,
                 api_key=llm_api_key,
@@ -1304,6 +1419,10 @@ if run:
                 else None
             )
             summary = deep_to_simplified(sum_future.result())
+            try:
+                brief = to_simplified(brief_future.result() or "")
+            except Exception:  # pragma: no cover - 网络/配额相关,精简总结失败不阻断主流程
+                brief = ""
             seg_translations = tr_future.result() if tr_future else None
         finally:
             pool2.shutdown(wait=False)
@@ -1364,6 +1483,7 @@ if run:
         "source": source_name,
         "duration": duration,
         "summary": summary,
+        "brief": brief,
         "transcript": source_text,
         "source_segments": source_segments,
         "corrected_text": corrected_text,
@@ -1374,4 +1494,10 @@ if run:
         "has_timestamps": audio_data is not None,
     }
     save_run(source_name, result)
+    st.session_state["last_result"] = result
     _render_result(result)
+
+elif st.session_state.get("last_result"):
+    # 结果页内的交互(翻译 / 问答 / 下载)会触发 rerun,而「开始生成纪要」按钮已复位;
+    # 这里从 session_state 恢复上一次结果,保证结果页在 rerun 后不消失。
+    _render_result(st.session_state["last_result"])
