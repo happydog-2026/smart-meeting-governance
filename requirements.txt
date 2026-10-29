@@ -20,6 +20,10 @@ imageio-ffmpeg
 # ==== 文本后处理(繁转简)====
 opencc-python-reimplemented>=0.1.7
 
+# ==== 术语导入(PPT/Word 用标准库解析,无需额外依赖)====
+# PDF 抽取需要 pypdf;未安装时仅 PDF 导入不可用,不影响主流程
+pypdf>=4.0
+
 # ==== 前端(Streamlit)====
 streamlit>=1.40
 

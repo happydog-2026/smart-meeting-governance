@@ -31,9 +31,14 @@ from app.services.llm import (  # noqa: E402
     annotate_speakers,
     ask_meeting,
     brief_summary,
+    clear_fallback_notices,
     correct_transcript,
+    extract_terms,
+    pop_fallback_notices,
     summarize,
 )
+from app.services.extract import extract_text  # noqa: E402
+from app.services import langs  # noqa: E402
 from app.services.translate import translate, translate_segments, translate_summary  # noqa: E402
 from app.services.speaker import (  # noqa: E402
     assign_speakers,
@@ -51,6 +56,12 @@ from app.services.history import delete_run, get_run, list_runs, save_run  # noq
 
 
 SPEAKER_COLORS = ["#2563eb", "#db2777", "#059669", "#d97706", "#7c3aed", "#0891b2"]
+
+# 侧边栏「双语翻译」选项 → 语言代码。语种清单集中在 app/services/langs.py,
+# 要加语种只改那里,这里和结果页的「目标语言」会自动跟着变。
+TRANSLATE_TARGETS = {
+    f"翻译成{v['label']}": code for code, v in langs.LANGUAGES.items()
+}
 
 # 处理流水线的四个步骤(顺序即展示顺序)
 _PIPELINE_STEPS = [
@@ -315,6 +326,10 @@ def _render_settings() -> None:
             _save_llm_settings(cfg)
         tail = saved_key[-4:] if len(saved_key) >= 4 else ""
         st.caption(f"✅ 已记住 API Key(…{tail}),下次打开自动恢复")
+        st.caption(
+            "📴 断网或云端连不上时会自动回退本机 Ollama(结果页会明确提示);"
+            "想强制走本地,点下面的「忘记已保存的 Key」即可。"
+        )
         if st.button("🗑️ 忘记已保存的 Key", key="forget_llm_key"):
             _LLM_SETTINGS_PATH.unlink(missing_ok=True)
             st.session_state["llm_api_key"] = ""
@@ -327,6 +342,10 @@ def _render_settings() -> None:
 
     st.divider()
     st.subheader("🔊 实时转写 (讯飞)")
+    st.caption(
+        "⚠️ 实时字幕是云端功能:讯飞或浏览器 Web Speech 均需联网,不参与全本地离线。"
+        "要离线转写,请回主界面用「🎤 本地录音」(本机 faster-whisper,免联网)。"
+    )
     xfyun_appid = st.text_input(
         "AppID",
         type="password",
@@ -402,7 +421,7 @@ def _render_live_translation() -> None:
     转写由浏览器 Web Speech API 负责(不受 Python 阻塞),这里每隔几秒
     把增长中的文本翻译一遍,实现字幕与译文同步出现。
     """
-    target = {"翻译成英文": "en", "翻译成中文": "zh"}.get(translate_opt)
+    target = TRANSLATE_TARGETS.get(translate_opt)
     if target is None:
         st.caption("在左侧开启「双语翻译」后,这里会随语音转写实时生成译文。")
         return
@@ -431,6 +450,8 @@ def _render_live_translation() -> None:
     result = st.session_state.get("live_translate_result", "")
     st.markdown("#### 🌐 实时译文")
     st.text(result or "翻译中…")
+    if pop_fallback_notices():
+        st.caption(f"📴 云端连不上,实时译文由本机 Ollama(`{settings.ollama_model}`)生成。")
 
 
 def _render_dialogue(
@@ -642,6 +663,83 @@ def _qa_history(msgs: list[dict]) -> list[dict]:
     return pairs
 
 
+def _merge_terms(existing: str, terms: list[str]) -> str:
+    """把新提取的术语并入已有术语表(逗号分隔),去重且保持原顺序。"""
+    seen: set[str] = set()
+    out: list[str] = []
+    # 兼容用户手输的中文逗号
+    for item in [*existing.replace("，", ",").split(","), *terms]:
+        term = item.strip()
+        if term and term.lower() not in seen:
+            seen.add(term.lower())
+            out.append(term)
+    return ", ".join(out)
+
+
+def _render_glossary_import(
+    *, model: str, api_key: str, base_url: str, using_ollama: bool
+) -> None:
+    """「从文件导入术语」:抽文字 → LLM 提术语 → 合并进术语表输入框。
+
+    不直接改 widget,而是把结果暂存到 session_state["_pending_glossary"],
+    rerun 后由主流程在渲染输入框之前写入(Streamlit 只允许在 widget 创建前赋值)。
+    """
+    st.caption(
+        "上传 PPT / Word / PDF / 文本,自动提取人名、机构、产品、术语,"
+        "并入上方术语表,供后续纠错与翻译统一写法。"
+    )
+    up = st.file_uploader(
+        "选择文件",
+        type=["pptx", "docx", "pdf", "txt", "md", "csv"],
+        key="glossary_file",
+        help="旧版 .ppt / .doc 请先另存为 .pptx / .docx;扫描版 PDF 无文字层,读不出来",
+    )
+    if up is None:
+        return
+
+    data = up.getvalue()
+    # 按文件内容哈希缓存解析结果,避免每次 rerun 重复解压
+    sig = hashlib.md5(data).hexdigest()
+    if st.session_state.get("glossary_file_sig") != sig:
+        try:
+            text = extract_text(up.name, data)
+        except Exception as exc:
+            st.error(f"读取文件失败:{exc}")
+            return
+        st.session_state["glossary_file_sig"] = sig
+        st.session_state["glossary_file_text"] = text
+
+    text = st.session_state.get("glossary_file_text", "")
+    if not text:
+        st.warning("文件里没读到文字(可能是纯图片幻灯片或扫描件)。")
+        return
+
+    st.caption(f"已读取 {len(text):,} 字。")
+    if not st.button("✨ 提取术语并填入术语表", key="extract_terms_btn"):
+        return
+
+    if using_ollama and not _ollama_available():
+        st.error(
+            "本地 Ollama 未运行,无法提取术语;请在「⚙️ 设置」页填入你自己的 LLM key,"
+            "或启动 Ollama 后重试。"
+        )
+        return
+    try:
+        with st.spinner("正在提取术语…"):
+            terms = extract_terms(text, model=model, api_key=api_key, base_url=base_url)
+    except Exception as exc:
+        st.error(f"术语提取失败:{exc}")
+        return
+    if not terms:
+        st.warning("没有提取到术语,可手动在术语表里填写。")
+        return
+
+    st.session_state["_pending_glossary"] = _merge_terms(
+        st.session_state.get("glossary_input", ""), terms
+    )
+    st.rerun()
+
+
 def _render_result(result: dict) -> None:
     """渲染一次运行(或历史记录)的完整结果:纪要 + 对话 + 导出。
 
@@ -658,11 +756,17 @@ def _render_result(result: dict) -> None:
     translated_text = result.get("translated_text")
     translated_lang = result.get("translated_lang") or ""
     has_translation = bool(translated_summary or translated_text)
-    md_lang = "en" if translated_lang == "英文" else "zh"
+    md_lang = langs.markdown_lang(translated_lang)
     show_time = bool(result.get("has_timestamps", True))
     brief = result.get("brief") or ""
 
     st.divider()
+    if result.get("fallback_local"):
+        st.warning(
+            "⚠️ 云端大模型连不上(断网或服务不可达),本次已自动改用本机 Ollama"
+            f"(`{settings.ollama_model}`)。纪要质量会低于云端模型;"
+            "联网后重新生成即可恢复正常。"
+        )
     if brief:
         st.subheader("📌 精简总结")
         st.markdown(f'<div class="mc-brief">{_html.escape(brief)}</div>', unsafe_allow_html=True)
@@ -792,10 +896,13 @@ def _render_result(result: dict) -> None:
             horizontal=True,
             key=f"tscope_{sig}",
         )
-        lang_choice = c2.radio(
-            "目标语言", ["英文", "中文"], horizontal=True, key=f"tlang_{sig}"
+        lang_choice = c2.selectbox(
+            "目标语言",
+            langs.labels(),
+            key=f"tlang_{sig}",
+            help="源语言自动识别,可中译外,也可外译中",
         )
-        target = "en" if lang_choice == "英文" else "zh"
+        target = langs.code_of(lang_choice) or langs.DEFAULT
         cache_key = f"trans_{sig}_{scope}_{target}"
 
         if st.button("🌐 开始翻译", key=f"tbtn_{sig}"):
@@ -844,14 +951,14 @@ def _render_result(result: dict) -> None:
                 cached["value"],
                 dialog_src,
                 is_dialogue=bool(n_speakers),
-                lang="en" if target == "en" else "zh",
+                lang=langs.markdown_lang(target),
             )
             st.markdown(f"#### {lang_choice}版纪要")
             st.markdown(md)
             st.download_button(
                 f"下载{lang_choice}纪要 Markdown",
                 data=md,
-                file_name=f"{source_name}.{'en' if target == 'en' else 'zh'}.md",
+                file_name=f"{source_name}.{target}.md",
                 mime="text/markdown",
                 key=f"tdl_{cache_key}",
             )
@@ -866,12 +973,15 @@ def _render_result(result: dict) -> None:
             st.download_button(
                 f"下载{lang_choice}译文",
                 data=cached["value"],
-                file_name=f"{source_name}.{'en' if target == 'en' else 'zh'}.txt",
+                file_name=f"{source_name}.{target}.txt",
                 mime="text/plain",
                 key=f"tdlt_{cache_key}",
             )
         else:
-            st.caption("选择内容与目标语言后点「开始翻译」。翻译走百度 API(省 token),未配置则回退 LLM。")
+            st.caption(
+                "选择内容与目标语言后点「开始翻译」。源语言自动识别,中译外 / 外译中都可以;"
+                "翻译优先走百度 API(省 token),未配置或该语种不支持时回退 LLM。"
+            )
 
     with export_tab:
         export_data = {
@@ -916,7 +1026,7 @@ def _render_result(result: dict) -> None:
             trans_text = translated_text or (
                 render_dialogue(corrected, with_timestamp=show_time) if n_speakers else corrected_text
             )
-            lang_suffix = "en" if translated_lang == "英文" else "zh"
+            lang_suffix = langs.iso_of(translated_lang)
             st.download_button(
                 f"下载{translated_lang}纪要 Markdown",
                 data=_to_markdown(trans_summary, trans_text, is_dialogue=bool(n_speakers), lang=md_lang),
@@ -963,6 +1073,10 @@ def _render_result(result: dict) -> None:
                 except Exception as exc:  # pragma: no cover - 网络/配额相关
                     answer = f"⚠️ 问答失败:{exc}"
             st.markdown(answer)
+            if pop_fallback_notices():
+                st.caption(
+                    f"📴 云端大模型连不上,此回答由本机 Ollama(`{settings.ollama_model}`)生成。"
+                )
         st.session_state[qa_key].append({"role": "assistant", "content": answer})
 
 
@@ -1006,17 +1120,31 @@ with st.sidebar:
         "留空则回退本地 Ollama / 浏览器语音。"
     )
     st.header("⚙️ 配置")
+    # 文件导入的术语在这里落地:必须在 text_input 创建之前写入 session_state,
+    # Streamlit 只允许在 widget 创建前赋值(创建后赋值会抛 StreamlitAPIException)。
+    _pending_glossary = st.session_state.pop("_pending_glossary", None)
+    if _pending_glossary is not None:
+        st.session_state["glossary_input"] = _pending_glossary
     glossary = st.text_input(
         "术语表",
+        key="glossary_input",
         placeholder="余华, 苏童, 莫言, DeepSeek",
-        help="逗号分隔的专有名词,用于纠正音译错误、统一写法",
+        help="逗号分隔的专有名词,用于纠正音译错误、统一写法;也可从文件一键导入",
     )
+    with st.expander("📎 从文件导入术语", expanded=False):
+        _render_glossary_import(
+            model=llm_model,
+            api_key=llm_api_key,
+            base_url=llm_base_url,
+            using_ollama=using_ollama,
+        )
     lang_opt = st.selectbox("语言", ["自动检测", "中文 (zh)", "英文 (en)"])
     translate_opt = st.selectbox(
         "双语翻译",
-        ["不翻译", "翻译成英文", "翻译成中文"],
+        ["不翻译", *TRANSLATE_TARGETS],
         index=0,
-        help="开启后生成逐句双语对照(原文 + 译文),并把纪要和转写稿翻译成目标语言",
+        help="开启后生成逐句双语对照(原文 + 译文),并把纪要和转写稿翻译成目标语言;"
+        "支持中、英、日、韩、法、德、西、葡、意、俄、阿、泰、越等语种互译",
     )
     enable_correct = st.checkbox("LLM 同音字纠错", value=True, help="对转写结果做同音字/术语修正")
     enable_diarize = st.checkbox(
@@ -1192,6 +1320,8 @@ if run:
         )
         st.stop()
 
+    # 清掉上一轮的回退记录,本轮是否有回退由下面重新收集
+    clear_fallback_notices()
     duration = None
     # 四步状态机:idle / running / done / failed,实时反映到流水线卡片
     states: dict[str, tuple[str, str]] = {k: ("idle", "") for k, _, _ in _PIPELINE_STEPS}
@@ -1380,8 +1510,8 @@ if run:
         target: str | None = None
         translated_lang = ""
         if translate_opt != "不翻译":
-            target = "en" if translate_opt == "翻译成英文" else "zh"
-            translated_lang = "英文" if target == "en" else "中文"
+            target = TRANSLATE_TARGETS.get(translate_opt)
+            translated_lang = langs.label_of(target)
 
         states["llm"] = (
             "running",
@@ -1479,6 +1609,8 @@ if run:
             Path(tmp_path).unlink(missing_ok=True)
 
     # 存档 + 展示(结果 dict 同时供历史记录复用)
+    # 本轮若发生过「云端不可达 → 回退本机 Ollama」,记入结果以便结果页显式提示
+    fallback_local = bool(pop_fallback_notices())
     result = {
         "source": source_name,
         "duration": duration,
@@ -1492,6 +1624,7 @@ if run:
         "translated_text": translated_text,
         "translated_lang": translated_lang,
         "has_timestamps": audio_data is not None,
+        "fallback_local": fallback_local,
     }
     save_run(source_name, result)
     st.session_state["last_result"] = result

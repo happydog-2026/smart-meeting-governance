@@ -14,12 +14,15 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from functools import lru_cache
 from typing import Any
 
+import openai
 from openai import OpenAI
 
 from app.config import settings
+from app.services import langs
 from app.services.speaker import normalize_speaker_labels
 
 logger = logging.getLogger(__name__)
@@ -41,7 +44,8 @@ SUMMARY_SYSTEM = (
 )
 
 TRANSLATE_SYSTEM = (
-    "你是专业会议翻译助手,擅长中英互译。\n"
+    "你是专业会议翻译助手,擅长把中文与英语、日语、韩语、法语、德语、"
+    "西班牙语、葡萄牙语、意大利语、俄语、阿拉伯语等多语种互译。\n"
     "要求:忠实原文,不增删信息;专业术语按术语表统一;"
     "输出目标语言的纯翻译结果,不要加解释、不要保留原文。\n"
     "输出严格 JSON。"
@@ -72,6 +76,48 @@ def get_client(*, api_key: str | None = None, base_url: str | None = None) -> Op
     return _make_client(key, url)
 
 
+def _ollama_ready() -> bool:
+    """探测本机 Ollama 是否在跑、且已拉取配置的模型(断网时的本地兜底)。"""
+    import urllib.request
+
+    # settings.ollama_base_url 形如 http://localhost:11434/v1,根端点提供 /api/tags
+    root = settings.ollama_base_url.rstrip("/").rsplit("/v1", 1)[0]
+    try:
+        with urllib.request.urlopen(root + "/api/tags", timeout=2) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        return False
+    names = {m.get("name", "").split(":")[0] for m in data.get("models", [])}
+    return settings.ollama_model.split(":")[0] in names
+
+
+# ---- 「本次已回退本地模型」的记录 ----
+# 回退是发生在 _chat_json 内部的自动行为,调用方拿不到返回值;
+# 用模块级集合记下,由前端在结果页显式提示用户,避免「静默降级」。
+# 生成流程会用线程池并发调用,故加锁。
+_fallback_lock = threading.Lock()
+_fallback_notices: set[str] = set()
+
+
+def _note_fallback(url: str) -> None:
+    with _fallback_lock:
+        _fallback_notices.add(url)
+
+
+def pop_fallback_notices() -> list[str]:
+    """取出并清空「已回退本地模型」记录(供网页端提示用户)。"""
+    with _fallback_lock:
+        out = sorted(_fallback_notices)
+        _fallback_notices.clear()
+    return out
+
+
+def clear_fallback_notices() -> None:
+    """清空记录(每次生成前调用,避免上一轮的提示残留到本轮)。"""
+    with _fallback_lock:
+        _fallback_notices.clear()
+
+
 def _chat_json(
     system: str,
     user: str,
@@ -82,25 +128,55 @@ def _chat_json(
     temperature: float = 0.0,
     max_retries: int = 2,
 ) -> dict[str, Any]:
-    """调用 LLM 并要求返回 JSON;解析失败自动重试。"""
-    client = get_client(api_key=api_key, base_url=base_url)
+    """调用 LLM 并要求返回 JSON;解析失败自动重试。
+
+    容错:若云端端点连不上(DNS 解析失败 / 断网 / 超时)且本机 Ollama 就绪,
+    自动回退本地模型重试 —— 用户填了 key 但处于离线环境时,「全本地」依然成立。
+    仅在「连接层」失败时回退;key 错误(401)等业务错误照常抛出,不掩盖问题。
+    """
+    # 当前生效的 (key, url, model),回退时会被替换
+    cur_key, cur_url, cur_model = api_key, base_url, model or settings.llm_model
     last_err: Exception | None = None
-    for attempt in range(max_retries + 1):
-        resp = client.chat.completions.create(
-            model=model or settings.llm_model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            temperature=temperature,
-            response_format={"type": "json_object"},
-        )
+    # 回退只做一次,且不计入 JSON 重试次数
+    tried_fallback = False
+    attempt = 0
+    while attempt <= max_retries:
+        client = get_client(api_key=cur_key, base_url=cur_url)
+        try:
+            resp = client.chat.completions.create(
+                model=cur_model or settings.llm_model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                temperature=temperature,
+                response_format={"type": "json_object"},
+            )
+        except openai.APIConnectionError as exc:
+            url = cur_url or settings.llm_base_url
+            if not tried_fallback and url != settings.ollama_base_url and _ollama_ready():
+                tried_fallback = True
+                _note_fallback(url)
+                logger.warning(
+                    "LLM 端点不可达(%s),回退本机 Ollama(%s):%s",
+                    url,
+                    settings.ollama_model,
+                    exc,
+                )
+                cur_key, cur_url, cur_model = (
+                    "ollama",
+                    settings.ollama_base_url,
+                    settings.ollama_model,
+                )
+                continue  # 不占用重试次数,直接用本地模型
+            raise
         raw = resp.choices[0].message.content
         try:
             return json.loads(raw)
         except json.JSONDecodeError as exc:
             last_err = exc
             logger.warning("LLM 输出非 JSON(第 %d 次):%s", attempt + 1, exc)
+            attempt += 1
     raise RuntimeError(f"LLM 多次返回非 JSON: {last_err}")
 
 
@@ -224,6 +300,53 @@ BRIEF_SYSTEM = (
     "篇幅控制在 100~200 字,用一段话讲清:会议主题、主要结论、关键待办。"
     "只依据会议内容,不编造。输出严格 JSON。"
 )
+
+
+TERMS_SYSTEM = (
+    "你是会议术语整理助手。请从给定资料中提取需要在语音转写里校正、"
+    "并在中英翻译时保持译名一致的专有名词与术语:人名、机构名、产品名、"
+    "技术术语、缩写等。\n"
+    "要求:只提取资料里真实出现的词,不要臆造;"
+    "剔除「会议」「问题」「方案」这类泛用词;"
+    "一律使用资料中的规范写法(保留原始大小写);去重。输出严格 JSON。"
+)
+
+
+def extract_terms(
+    text: str,
+    *,
+    limit: int = 60,
+    max_chars: int = 12000,
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> list[str]:
+    """从资料正文里提取术语(供术语表一键导入)。
+
+    截断到 max_chars,避免整份 PPT 撑爆上下文;结果做去重与清洗。
+    """
+    body = text[:max_chars]
+    user = (
+        f"资料内容:\n{body}\n\n"
+        f'请输出 JSON:{{"terms": ["术语1", "术语2"]}},最多 {limit} 个。'
+    )
+    data = _chat_json(TERMS_SYSTEM, user, model=model, api_key=api_key, base_url=base_url)
+    raw = data.get("terms")
+    if not isinstance(raw, list):
+        raise RuntimeError(f"术语提取返回结构异常: {data}")
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        term = str(item).strip()
+        # 过滤空串、过长的整句(多半是模型把句子当术语了)
+        if not term or len(term) > 40 or term.lower() in seen:
+            continue
+        seen.add(term.lower())
+        out.append(term)
+        if len(out) >= limit:
+            break
+    return out
 
 
 def brief_summary(
@@ -353,8 +476,8 @@ def translate(
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> str:
-    """中英互译(长文本自动分块)。target: "en" 译成英文,"zh" 译成中文。"""
-    direction = "英文" if target == "en" else "中文"
+    """多语种翻译(长文本自动分块)。target 为语言代码,见 app/services/langs.py。"""
+    direction = langs.prompt_name(target)
     glossary_block = f"\n术语表(严格按此翻译):{glossary.strip()}\n" if glossary.strip() else ""
     parts = []
     for chunk in _split_text(text):
@@ -378,7 +501,7 @@ def translate_summary(
     base_url: str | None = None,
 ) -> dict[str, Any]:
     """翻译结构化纪要,保持 JSON 结构与字段名不变,只翻译字符串值。"""
-    direction = "英文" if target == "en" else "中文"
+    direction = langs.prompt_name(target)
     glossary_block = f"\n术语表(严格按此翻译):{glossary.strip()}\n" if glossary.strip() else ""
     user = (
         f"{glossary_block}\n"
@@ -395,7 +518,8 @@ def translate_summary(
 
 
 SEGMENT_TRANSLATE_SYSTEM = (
-    "你是专业会议翻译助手,擅长中英互译。\n"
+    "你是专业会议翻译助手,擅长中文与英语、日语、韩语、法语、德语、西班牙语、"
+    "葡萄牙语、意大利语、俄语、阿拉伯语等多语种互译。\n"
     "你会收到按顺序编号的对话分段,请逐条翻译。\n"
     "铁律:译文条数必须与输入条数完全一致,顺序一一对应;"
     "每条只翻译该条内容,禁止合并、拆分、增删信息;专业术语按术语表统一。\n"
@@ -412,7 +536,7 @@ def _translate_segments_chunk(
     base_url: str | None,
 ) -> list[str]:
     """翻译一小批分段(单次 LLM 调用),返回等长译文列表。"""
-    direction = "英文" if target == "en" else "中文"
+    direction = langs.prompt_name(target)
     numbered = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(texts))
     user = (
         f"{glossary_block}\n"

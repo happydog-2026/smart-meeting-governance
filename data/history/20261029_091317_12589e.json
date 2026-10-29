@@ -1,0 +1,71 @@
+{
+  "source": "本地录音",
+  "duration": 6.0,
+  "summary": {
+    "title": "今天天气怎么样",
+    "summary": "今天是晴天",
+    "topics": [
+      {
+        "title": "天气",
+        "points": [
+          "今天是晴天"
+        ],
+        "conclusion": "今天天气晴朗"
+      }
+    ],
+    "action_items": [],
+    "keywords": [
+      "今天",
+      "天气",
+      "晴天"
+    ]
+  },
+  "brief": "会议主题围绕天气情况，主要结论为今天是晴天，未提出具体待办事项。",
+  "transcript": "喂喂喂,听得懂吗?今天天气怎么样?今天是晴天",
+  "source_segments": [
+    {
+      "start": 0.25,
+      "end": 2.25,
+      "text": "喂喂喂,听得懂吗?",
+      "speaker": null
+    },
+    {
+      "start": 2.25,
+      "end": 4.42,
+      "text": "今天天气怎么样?",
+      "speaker": null
+    },
+    {
+      "start": 4.42,
+      "end": 5.42,
+      "text": "今天是晴天",
+      "speaker": null
+    }
+  ],
+  "corrected_text": "喂喂喂,听得懂吗? 今天天气怎么样? 今天是晴天今天天气怎么样?今天是晴天",
+  "corrected_segments": [
+    {
+      "start": 0.25,
+      "end": 2.25,
+      "text": "喂喂喂,听得懂吗? 今天天气怎么样? 今天是晴天",
+      "speaker": null
+    },
+    {
+      "start": 2.25,
+      "end": 4.42,
+      "text": "今天天气怎么样?",
+      "speaker": null
+    },
+    {
+      "start": 4.42,
+      "end": 5.42,
+      "text": "今天是晴天",
+      "speaker": null
+    }
+  ],
+  "translated_summary": null,
+  "translated_text": null,
+  "translated_lang": "",
+  "has_timestamps": true,
+  "fallback_local": true
+}

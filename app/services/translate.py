@@ -21,7 +21,7 @@ import urllib.parse
 import urllib.request
 
 from app.config import settings
-from app.services import llm
+from app.services import langs, llm
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +33,18 @@ def _baidu_available() -> bool:
 
 
 def _baidu_request(q: str, target: str) -> str:
-    """单次调用百度通用翻译,返回译文字符串。"""
+    """单次调用百度通用翻译,返回译文字符串。
+
+    target 是内部语言代码,这里翻译成百度自己的 to 参数(如 ja → jp、ko → kor);
+    源语言交给百度自动识别(from=auto),所以中译外、外译中都不用额外配置。
+    """
     appid, key = settings.baidu_appid, settings.baidu_key
     salt = str(random.randint(10000, 99999))
     sign = hashlib.md5((appid + q + salt + key).encode("utf-8")).hexdigest()
     params = {
         "q": q,
         "from": "auto",
-        "to": target,
+        "to": langs.baidu_code(target),
         "appid": appid,
         "salt": salt,
         "sign": sign,
@@ -51,7 +55,9 @@ def _baidu_request(q: str, target: str) -> str:
         data = json.loads(resp.read().decode("utf-8"))
     if "error_code" in data:
         raise RuntimeError(f"百度翻译错误 {data['error_code']}: {data.get('error_msg')}")
-    return "".join(item.get("dst", "") for item in data.get("trans_result", []))
+    # 百度按行返回多条 trans_result(一行一条);用换行拼接才能还原原文的行结构,
+    # 直接首尾相接会把多行挤成一行,导致结构化纪要「字段数不一致」而白白回退 LLM。
+    return "\n".join(item.get("dst", "") for item in data.get("trans_result", []))
 
 
 def _split_chunks(text: str, max_chars: int = 1500) -> list[str]:
