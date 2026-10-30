@@ -634,6 +634,57 @@ def _qa_history(msgs: list[dict]) -> list[dict]:
     return pairs
 
 
+def _qa_context(
+    summary: dict,
+    brief: str,
+    corrected: list[dict],
+    corrected_text: str,
+    n_speakers: int,
+) -> str:
+    """拼给问答用的会议资料:纪要(标题/概述/议题/待办)+ 精简总结 + 原文。
+
+    问答不只回答「原文里有没有」,还要能总结、汇总待办、按负责人归类等,
+    所以把已生成的结构化结果也一并给模型,避免它只能从逐字稿里翻。
+    """
+    parts: list[str] = []
+    if summary.get("title"):
+        parts.append(f"会议标题:{summary['title']}")
+    if summary.get("summary"):
+        parts.append(f"会议概述:{summary['summary']}")
+    topics = summary.get("topics") or []
+    if topics:
+        lines = []
+        for t in topics:
+            title = t.get("title") or "未命名议题"
+            seg = f"- {title}"
+            if t.get("points"):
+                seg += ":" + ";".join(str(p) for p in t["points"])
+            if t.get("conclusion"):
+                seg += f"(结论:{t['conclusion']})"
+            lines.append(seg)
+        parts.append("议题与结论:\n" + "\n".join(lines))
+    actions = summary.get("action_items") or []
+    if actions:
+        lines = []
+        for a in actions:
+            line = f"- {a.get('task', '')}"
+            if a.get("owner"):
+                line += f"(负责人:{a['owner']})"
+            if a.get("deadline"):
+                line += f"(截止:{a['deadline']})"
+            lines.append(line)
+        parts.append("待办事项:\n" + "\n".join(lines))
+    if summary.get("keywords"):
+        parts.append("关键词:" + "、".join(str(k) for k in summary["keywords"]))
+    if brief:
+        parts.append(f"精简总结:{brief}")
+    transcript = (
+        render_dialogue(corrected, with_timestamp=False) if n_speakers else corrected_text
+    )
+    parts.append("会议原文:\n" + transcript)
+    return "\n\n".join(parts)
+
+
 def _merge_terms(existing: str, terms: list[str]) -> str:
     """把新提取的术语并入已有术语表(逗号分隔),去重且保持原顺序。"""
     seen: set[str] = set()
@@ -1005,10 +1056,13 @@ def _render_result(result: dict) -> None:
                 mime="text/markdown",
             )
 
-    # ===== 会议问答:就会议内容提问,或按需生成总结 / 纪要 =====
+    # ===== 会议问答:就会议内容提问,或按需总结 / 改写 / 翻译 =====
     st.divider()
     st.subheader("💬 会议问答")
-    st.caption("就本场会议提问,或让我按你的要求生成总结、纪要、待办清单。")
+    st.caption(
+        "可以追问会议里的任何细节,也可以让我换种语气/语言改写、整理成表格或邮件。"
+        "涉及会议事实时严格按内容回答,其它加工需求照常完成。"
+    )
 
     qa_sig = hashlib.md5(
         (source_name + corrected_text).encode("utf-8")
@@ -1021,15 +1075,37 @@ def _render_result(result: dict) -> None:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if qa_prompt := st.chat_input("就会议内容提问…", key=f"qa_input_{qa_sig}"):
+    # 先取出「一键提问」暂存的提示词;有暂存就说明这一轮是按钮触发的,不再重复渲染按钮
+    _preset = st.session_state.pop(f"qa_pending_{qa_sig}", None)
+
+    # 快捷提问始终可用(不会因为已经问过一次就消失),四个按钮可以反复、连续点;
+    # 按钮只是把提示词暂存后 rerun,不会影响其它功能或已有对话。
+    st.caption("快捷提问(随时可用,可连续点多个)")
+    _starters = {
+        "🧾 汇总待办": "按负责人汇总所有待办事项,标出截止时间,用表格展示。",
+        "✉️ 写成邮件": "把这次会议的结论写成发给团队的中文邮件,语气正式、分点清晰。",
+        "🌐 英文纪要": "用英文重新整理一份会议纪要,分议题列出结论与待办。",
+        "🤔 不同意见": "这场会议里有哪些分歧或不同意见?各自的理由是什么?",
+    }
+    starter_cols = st.columns(len(_starters))
+    for col, (label, preset) in zip(starter_cols, _starters.items()):
+        if col.button(
+            label, key=f"qa_starter_{qa_sig}_{label}", use_container_width=True
+        ):
+            st.session_state[f"qa_pending_{qa_sig}"] = preset
+            st.rerun()
+
+    typed = st.chat_input(
+        "就会议内容提问,或让我总结 / 翻译 / 改写成邮件…", key=f"qa_input_{qa_sig}"
+    )
+    qa_prompt = typed or _preset
+
+    if qa_prompt:
         st.session_state[qa_key].append({"role": "user", "content": qa_prompt})
         with st.chat_message("user"):
             st.markdown(qa_prompt)
-        context = (
-            render_dialogue(corrected, with_timestamp=False)
-            if n_speakers
-            else corrected_text
-        )
+        # 问答上下文 = 结构化纪要 + 精简总结 + 原文,让模型既能查事实也能做加工
+        context = _qa_context(summary, brief, corrected, corrected_text, n_speakers)
         with st.chat_message("assistant"):
             with st.spinner("思考中…"):
                 try:
@@ -1207,23 +1283,38 @@ if st.session_state.get("view_run_id"):
 # ============ 输入区 ============
 tab_audio, tab_live, tab_mic, tab_text = st.tabs(_INPUT_TABS)
 
-source_segments: list[dict] | None = None
-source_text: str = ""
-source_name: str = ""
-# 上传 / 录音统一抽象为「原始音频字节 + 后缀」,下游走同一条转写链路。
-audio_data: bytes | None = None
-audio_suffix: str = ".wav"
+# 四个标签页各自保存原始数据,最后由「用户最近操作的输入源」决定本次生成用哪一份。
+# 之前是「按标签顺序依次把结果写进同一组变量」,而上传的文件 / 录音会跨 rerun 一直存在,
+# 于是「先上传音频生成过纪要,再改用实时字幕或本地录音」时,用的还是那份旧音频
+# ——因为 audio_data 非空就永远走音频分支,新输入被顶掉。
+st.session_state.setdefault("input_source", "")
+
+
+def _mark_source(src: str) -> None:
+    """记录用户最近操作的输入源(on_change 回调),决定「开始生成纪要」用哪一份输入。"""
+    st.session_state["input_source"] = src
+
+
+# 各输入源的原始数据(未使用的源保持 None / 空串)
+upload_bytes: bytes | None = None
+upload_suffix = ".wav"
+upload_name = ""
+live_value = ""
+mic_bytes: bytes | None = None
 
 with tab_audio:
     uploaded = st.file_uploader(
         "选择音频文件",
         type=["wav", "mp3", "m4a", "flac", "ogg", "opus", "mp4", "webm", "aac"],
         help="支持常见音频/视频格式,内部自动转 16k",
+        key="input_upload",
+        on_change=_mark_source,
+        args=("音频上传",),
     )
     if uploaded is not None:
-        source_name = Path(uploaded.name).stem
-        audio_data = uploaded.getvalue()
-        audio_suffix = Path(uploaded.name).suffix
+        upload_name = Path(uploaded.name).stem
+        upload_bytes = uploaded.getvalue()
+        upload_suffix = Path(uploaded.name).suffix
         st.audio(uploaded)
 
 with tab_live:
@@ -1245,10 +1336,12 @@ with tab_live:
     if live_raw_text:
         st.session_state["live_translate_src"] = live_raw_text
 
-    # 仅在「新识别结果」到达时覆盖文本框,避免吞掉用户后续的手动修改
+    # 仅在「新识别结果」到达时覆盖文本框,避免吞掉用户后续的手动修改;
+    # 同时把「实时字幕」标记为最近使用的输入源(手动编辑文本框也会触发)。
     if live_raw_text and live_raw_text != st.session_state["wsr_last"]:
         st.session_state["wsr_last"] = live_raw_text
         st.session_state["wsr_edit"] = live_raw_text
+        _mark_source("实时字幕")
 
     col_text, col_trans = st.columns([1, 1])
     with col_text:
@@ -1257,23 +1350,25 @@ with tab_live:
             key="wsr_edit",
             height=260,
             placeholder="点击上方「开始录音」,识别文字会实时显示并回填到这里…",
+            on_change=_mark_source,
+            args=("实时字幕",),
         )
     with col_trans:
         _render_live_translation()
 
     if live_text.strip():
-        source_text = live_text.strip()
-        source_name = "实时字幕"
+        live_value = live_text.strip()
 
 with tab_mic:
     mic_audio = st.audio_input(
         "🎤 点击开始录音",
         help="使用浏览器麦克风录音(16kHz),结束后点击下方按钮用本地 faster-whisper 转写",
+        key="input_mic",
+        on_change=_mark_source,
+        args=("本地录音",),
     )
     if mic_audio is not None:
-        source_name = "本地录音"
-        audio_data = mic_audio.getvalue()
-        audio_suffix = ".wav"
+        mic_bytes = mic_audio.getvalue()
         st.audio(mic_audio)
         st.success("录音已就绪,点击下方「开始生成纪要」即可本地转写。")
     else:
@@ -1284,10 +1379,37 @@ with tab_text:
         "粘贴会议 / 对话文本",
         height=220,
         placeholder="在这里粘贴转写稿或对话内容,直接跳过语音识别...",
+        key="input_text",
+        on_change=_mark_source,
+        args=("粘贴文本",),
     )
-    if text_input.strip():
-        source_text = text_input.strip()
-        source_name = "文本输入"
+
+# ============ 选定本次输入 ============
+# 「最近操作的输入源」优先;若它此刻没有内容,按固定顺序回退,保证点「生成」时总有东西可用。
+source_segments: list[dict] | None = None
+source_text: str = ""
+source_name: str = ""
+# 上传 / 录音统一抽象为「原始音频字节 + 后缀」,下游走同一条转写链路。
+audio_data: bytes | None = None
+audio_suffix: str = ".wav"
+
+_active = st.session_state.get("input_source", "")
+_source_order = [_active] + [
+    s for s in ("音频上传", "本地录音", "实时字幕", "粘贴文本") if s != _active
+]
+for _src in _source_order:
+    if _src == "音频上传" and upload_bytes is not None:
+        audio_data, audio_suffix, source_name = upload_bytes, upload_suffix, upload_name
+        break
+    if _src == "本地录音" and mic_bytes is not None:
+        audio_data, audio_suffix, source_name = mic_bytes, ".wav", "本地录音"
+        break
+    if _src == "实时字幕" and live_value:
+        source_text, source_name = live_value, "实时字幕"
+        break
+    if _src == "粘贴文本" and text_input.strip():
+        source_text, source_name = text_input.strip(), "文本输入"
+        break
 
 run = st.button("🚀 开始生成纪要", type="primary", use_container_width=True)
 

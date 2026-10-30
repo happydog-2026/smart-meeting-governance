@@ -367,9 +367,13 @@ def brief_summary(
 
 
 QA_SYSTEM = (
-    "你是会议内容问答助手。请只依据给定的会议内容回答用户问题,"
-    "不要编造会议中没有的信息;若会议内容里找不到答案,就如实说明「会议中未提及」。"
-    "用户也可能要求你总结、提炼、整理成纪要或待办清单,按用户要求完成。"
+    "你是这场会议的智能助手,既能回答关于会议内容的问题,也能帮用户做进一步加工。\n"
+    "1) 涉及会议本身的事实(谁说了什么、结论、待办、时间/数字等)必须以给定内容为准,"
+    "不要编造;确实找不到时,直说「会议中未提及」,并可以顺带提示用户能问什么。\n"
+    "2) 但用户要求总结、改写、翻译、整理成表格/清单/邮件/周报、提建议或补充常识时,"
+    "就正常发挥,不必因为「会议里没写」而机械拒绝。\n"
+    "3) 回答自然、简洁、有条理;可用 Markdown(列表、表格、加粗、小标题)。"
+    "用户用中文问就中文答,用英文问就用英文答。\n"
     "输出严格 JSON。"
 )
 
@@ -382,21 +386,33 @@ def ask_meeting(
     model: str | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
+    temperature: float = 0.3,
 ) -> str:
-    """就会议内容问答(可带历史问答上下文,支持追问与按需生成总结/纪要)。"""
+    """就会议内容问答(可带历史问答上下文,支持追问与按需生成总结/纪要)。
+
+    温度略高于纪要类任务(0.3),让回答更自然、不那么生硬;
+    归纳类任务仍以给定内容为准,不影响事实准确性。
+    """
     history_block = ""
     if history:
         turns = "\n".join(
-            f"问:{h.get('q', '')}\n答:{h.get('a', '')}" for h in history[-6:]
+            f"问:{h.get('q', '')}\n答:{h.get('a', '')}" for h in history[-10:]
         )
-        history_block = f"\n此前问答(用于理解追问的上下文):\n{turns}\n"
+        history_block = f"\n此前问答(用于理解追问的上下文,回答时保持前后一致):\n{turns}\n"
     user = (
-        f"会议内容:\n{text}\n"
+        f"会议资料:\n{text}\n"
         f"{history_block}\n"
         f"用户问题:\n{question}\n\n"
         f'请输出 JSON:{{"answer": "你的回答"}}'
     )
-    data = _chat_json(QA_SYSTEM, user, model=model, api_key=api_key, base_url=base_url)
+    data = _chat_json(
+        QA_SYSTEM,
+        user,
+        model=model,
+        api_key=api_key,
+        base_url=base_url,
+        temperature=temperature,
+    )
     return str(data.get("answer") or "").strip()
 
 

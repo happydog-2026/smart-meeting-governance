@@ -1,0 +1,55 @@
+{
+  "source": "实时字幕",
+  "duration": null,
+  "summary": {
+    "title": "确认通话与当日气温",
+    "summary": "发言人1反复确认对方是否能听到，并询问今天的气温。随后给出今天气温为13到18度。",
+    "topics": [
+      {
+        "title": "通话连接确认",
+        "points": [
+          "发言人1多次说“喂喂喂”并询问是否听到"
+        ],
+        "conclusion": "未明确确认对方是否听到"
+      },
+      {
+        "title": "当日气温",
+        "points": [
+          "发言人1询问今天多少度",
+          "发言人1给出今天气温为13到18度"
+        ],
+        "conclusion": "今天气温为13到18度"
+      }
+    ],
+    "action_items": [],
+    "keywords": [
+      "通话确认",
+      "气温",
+      "13到18度"
+    ]
+  },
+  "brief": "会议未进入实质议题，仅测试音频并确认当日气温为13至18度，无主要结论与关键待办。",
+  "transcript": "喂喂喂听到了听到吗？今天多少度？对。喂喂喂。今天多少度？今天13到18度。",
+  "source_segments": [
+    {
+      "start": 0.0,
+      "end": 0.5,
+      "speaker": "发言人1",
+      "text": "喂喂喂听到了听到吗？今天多少度？对。喂喂喂。今天多少度？今天13到18度。"
+    }
+  ],
+  "corrected_text": "喂喂喂听到了听到吗？今天多少度？对。喂喂喂。今天多少度？今天13到18度。",
+  "corrected_segments": [
+    {
+      "start": 0.0,
+      "end": 0.5,
+      "speaker": "发言人1",
+      "text": "喂喂喂听到了听到吗？今天多少度？对。喂喂喂。今天多少度？今天13到18度。"
+    }
+  ],
+  "translated_summary": null,
+  "translated_text": null,
+  "translated_lang": "",
+  "has_timestamps": false,
+  "fallback_local": false
+}

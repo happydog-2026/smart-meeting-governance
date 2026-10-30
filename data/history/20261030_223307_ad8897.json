@@ -1,0 +1,417 @@
+{
+  "source": "英语演讲_College Education in the Ai Age",
+  "duration": 109.53,
+  "summary": {
+    "title": "AI时代大学教育应如何重新思考教学与评价",
+    "summary": "发言者以设计专业学生的视角，指出学生过度依赖AI完成作业、生成设计概念，导致作品背后缺乏思考，并提出AI时代大学教育应如何评价学生成果的问题。发言者主张AI不是敌人，学生应先形成自己的想法，再用AI探索、比较和挑战思路，大学也应超越最终结果，重视学生的思考与决策过程。",
+    "topics": [
+      {
+        "title": "AI对学生学习与作业的影响",
+        "points": [
+          "AI能在几秒内写作、点击几下解决问题甚至替人设计",
+          "部分学生依赖AI完成作业或生成整个设计概念",
+          "成果看似出色，但背后的思考可能缺失"
+        ],
+        "conclusion": "AI正在改变多个领域学生的学习与解题方式，但依赖AI可能导致思考缺位"
+      },
+      {
+        "title": "如何评价AI辅助完成的学生作品",
+        "points": [
+          "学生用AI做出优秀作品时应如何评价",
+          "是只看最终结果，还是也考虑背后的思考过程",
+          "这一问题不限于设计，也存在于商科、工程、人文学科"
+        ],
+        "conclusion": "评价不应只看最终成果，还应关注学生的思考过程"
+      },
+      {
+        "title": "学生应如何与AI共同学习",
+        "points": [
+          "AI本身不是敌人，真正的考验是如何与它一起学习",
+          "先发展自己的想法，再用AI探索不同路径、比较方案、发现新可能",
+          "让AI挑战自己的想法，帮助发现自己可能忽略的内容",
+          "不要简单接受AI的答案，要反思、自主决策并从过程中学习"
+        ],
+        "conclusion": "AI应帮助人超越已有认知，而不是替人思考"
+      },
+      {
+        "title": "大学教学与评价方式的改革",
+        "points": [
+          "大学必须重新思考如何教学和评价学生",
+          "除最终结果外，教师应考察学生如何决策、解题、思考并借助AI改进作品",
+          "答案变得容易生成时，思考能力反而更有价值"
+        ],
+        "conclusion": "AI时代大学教育的目标不是少用技术，而是借助技术更深入地思考、更大胆地创造"
+      }
+    ],
+    "action_items": [],
+    "keywords": [
+      "AI",
+      "大学教育",
+      "设计专业",
+      "学生评价",
+      "思考能力",
+      "AI辅助学习",
+      "教学改革"
+    ]
+  },
+  "brief": "会议围绕AI时代大学教育应如何应对展开。发言人指出AI可快速生成设计与作业，但学生可能缺失思考过程，因此评价学生作品不应只看最终结果，还应考察其思考、决策与改进过程。结论是AI并非敌人，学生应先形成自己的想法，再用AI探索方案、挑战观点并反思决策；大学也需重新设计教学与评价方式。关键待办：学生先独立思考再用AI辅助，教师评价兼顾过程与结果。",
+  "transcript": "Let us imagine what if AI can write assets in seconds, solve problems with a few clicks, or even design for us.If AI can do so much, what should college education look like in the future?As a design student, I have noticed that some students rely on AI to finish assignments or generate entire design concepts.The results might look impressive, but the thinking behind them can be missing.So, if a student create an excellent work with AI, how should we evaluate it?Should we focus on the final results?Or also consider the thinking behind it?This is not just a problem in design.In many fields like business, engineering, and humanities, AI is changing how studentslearn and solve problems.Let me be clear, AI itself is not our full.The real test lies in how we learn alongside it.As students, we should first develop our own ideas, then use AI to explore different approaches,compare solutions, and discover new possibilities.We can also ask AI to challenge our ideas, help us see what we might have missed.Instead of simply accepting its answers, we should reflect, make our own decision, andlearn from the process.University must also rethink how they teach and evaluate students.Beyond final results, teachers should considerhow students make decisions, solve problems,think, and improve their work with AI.Because when answer become easy to generate,the ability to think become even more valuable.AI should not think for us.It should help us think beyond what we already know.The goal of college education in the AI ageis not use less technology,but to think more deeply and create more boldly with it.Thank you.",
+  "source_segments": [
+    {
+      "start": 0.44,
+      "end": 7.94,
+      "text": "Let us imagine what if AI can write assets in seconds, solve problems with a few clicks, or even design for us.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 7.94,
+      "end": 12.64,
+      "text": "If AI can do so much, what should college education look like in the future?",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 12.64,
+      "end": 21.21,
+      "text": "As a design student, I have noticed that some students rely on AI to finish assignments or generate entire design concepts.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 21.21,
+      "end": 25.71,
+      "text": "The results might look impressive, but the thinking behind them can be missing.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 25.71,
+      "end": 31.87,
+      "text": "So, if a student create an excellent work with AI, how should we evaluate it?",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 31.87,
+      "end": 34.17,
+      "text": "Should we focus on the final results?",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 34.17,
+      "end": 37.03,
+      "text": "Or also consider the thinking behind it?",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 37.03,
+      "end": 39.27,
+      "text": "This is not just a problem in design.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 39.27,
+      "end": 44.75,
+      "text": "In many fields like business, engineering, and humanities, AI is changing how students",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 44.75,
+      "end": 46.98,
+      "text": "learn and solve problems.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 46.98,
+      "end": 50.42,
+      "text": "Let me be clear, AI itself is not our full.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 50.42,
+      "end": 54.02,
+      "text": "The real test lies in how we learn alongside it.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 54.02,
+      "end": 60.02,
+      "text": "As students, we should first develop our own ideas, then use AI to explore different approaches,",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 60.02,
+      "end": 63.62,
+      "text": "compare solutions, and discover new possibilities.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 63.62,
+      "end": 69.1,
+      "text": "We can also ask AI to challenge our ideas, help us see what we might have missed.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 69.1,
+      "end": 74.42,
+      "text": "Instead of simply accepting its answers, we should reflect, make our own decision, and",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 74.42,
+      "end": 76.9,
+      "text": "learn from the process.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 76.9,
+      "end": 80.62,
+      "text": "University must also rethink how they teach and evaluate students.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 80.62,
+      "end": 83.26,
+      "text": "Beyond final results, teachers should consider",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 83.26,
+      "end": 86.18,
+      "text": "how students make decisions, solve problems,",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 86.18,
+      "end": 88.74,
+      "text": "think, and improve their work with AI.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 88.74,
+      "end": 91.82,
+      "text": "Because when answer become easy to generate,",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 91.82,
+      "end": 95.66,
+      "text": "the ability to think become even more valuable.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 95.66,
+      "end": 97.38,
+      "text": "AI should not think for us.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 97.38,
+      "end": 100.66,
+      "text": "It should help us think beyond what we already know.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 100.66,
+      "end": 103.26,
+      "text": "The goal of college education in the AI age",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 103.26,
+      "end": 105.38,
+      "text": "is not use less technology,",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 105.38,
+      "end": 108.86,
+      "text": "but to think more deeply and create more boldly with it.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 108.86,
+      "end": 109.7,
+      "text": "Thank you.",
+      "speaker": "发言人1"
+    }
+  ],
+  "corrected_text": "Let us imagine what if AI can write assets in seconds, solve problems with a few clicks, or even design for us.If AI can do so much, what should college education look like in the future?As a design student, I have noticed that some students rely on AI to finish assignments or generate entire design concepts.The results might look impressive, but the thinking behind them can be missing.So, if a student create an excellent work with AI, how should we evaluate it?Should we focus on the final results?Or also consider the thinking behind it?This is not just a problem in design.In many fields like business, engineering, and humanities, AI is changing how studentslearn and solve problems.Let me be clear, AI itself is not our foe.The real test lies in how we learn alongside it.As students, we should first develop our own ideas, then use AI to explore different approaches,compare solutions, and discover new possibilities.We can also ask AI to challenge our ideas, help us see what we might have missed.Instead of simply accepting its answers, we should reflect, make our own decision, andlearn from the process.University must also rethink how they teach and evaluate students.Beyond final results, teachers should considerhow students make decisions, solve problems,think, and improve their work with AI.Because when answer become easy to generate,the ability to think become even more valuable.AI should not think for us.It should help us think beyond what we already know.The goal of college education in the AI ageis not use less technology,but to think more deeply and create more boldly with it.Thank you.",
+  "corrected_segments": [
+    {
+      "start": 0.44,
+      "end": 7.94,
+      "text": "Let us imagine what if AI can write assets in seconds, solve problems with a few clicks, or even design for us.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 7.94,
+      "end": 12.64,
+      "text": "If AI can do so much, what should college education look like in the future?",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 12.64,
+      "end": 21.21,
+      "text": "As a design student, I have noticed that some students rely on AI to finish assignments or generate entire design concepts.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 21.21,
+      "end": 25.71,
+      "text": "The results might look impressive, but the thinking behind them can be missing.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 25.71,
+      "end": 31.87,
+      "text": "So, if a student create an excellent work with AI, how should we evaluate it?",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 31.87,
+      "end": 34.17,
+      "text": "Should we focus on the final results?",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 34.17,
+      "end": 37.03,
+      "text": "Or also consider the thinking behind it?",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 37.03,
+      "end": 39.27,
+      "text": "This is not just a problem in design.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 39.27,
+      "end": 44.75,
+      "text": "In many fields like business, engineering, and humanities, AI is changing how students",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 44.75,
+      "end": 46.98,
+      "text": "learn and solve problems.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 46.98,
+      "end": 50.42,
+      "text": "Let me be clear, AI itself is not our foe.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 50.42,
+      "end": 54.02,
+      "text": "The real test lies in how we learn alongside it.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 54.02,
+      "end": 60.02,
+      "text": "As students, we should first develop our own ideas, then use AI to explore different approaches,",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 60.02,
+      "end": 63.62,
+      "text": "compare solutions, and discover new possibilities.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 63.62,
+      "end": 69.1,
+      "text": "We can also ask AI to challenge our ideas, help us see what we might have missed.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 69.1,
+      "end": 74.42,
+      "text": "Instead of simply accepting its answers, we should reflect, make our own decision, and",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 74.42,
+      "end": 76.9,
+      "text": "learn from the process.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 76.9,
+      "end": 80.62,
+      "text": "University must also rethink how they teach and evaluate students.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 80.62,
+      "end": 83.26,
+      "text": "Beyond final results, teachers should consider",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 83.26,
+      "end": 86.18,
+      "text": "how students make decisions, solve problems,",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 86.18,
+      "end": 88.74,
+      "text": "think, and improve their work with AI.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 88.74,
+      "end": 91.82,
+      "text": "Because when answer become easy to generate,",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 91.82,
+      "end": 95.66,
+      "text": "the ability to think become even more valuable.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 95.66,
+      "end": 97.38,
+      "text": "AI should not think for us.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 97.38,
+      "end": 100.66,
+      "text": "It should help us think beyond what we already know.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 100.66,
+      "end": 103.26,
+      "text": "The goal of college education in the AI age",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 103.26,
+      "end": 105.38,
+      "text": "is not use less technology,",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 105.38,
+      "end": 108.86,
+      "text": "but to think more deeply and create more boldly with it.",
+      "speaker": "发言人1"
+    },
+    {
+      "start": 108.86,
+      "end": 109.7,
+      "text": "Thank you.",
+      "speaker": "发言人1"
+    }
+  ],
+  "translated_summary": null,
+  "translated_text": null,
+  "translated_lang": "",
+  "has_timestamps": true,
+  "fallback_local": false
+}
