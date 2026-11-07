@@ -1,0 +1,4059 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smart Meeting Government · 会议智治与跨语言沟通平台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"PingFang SC"', '"Microsoft YaHei"', 'ui-sans-serif', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        },
+        boxShadow: {
+          soft: '0 2px 12px rgba(99,102,241,0.08)',
+        },
+      },
+    },
+  };
+</script>
+<style>
+  :root { color-scheme: light; }
+  html, body { height: 100%; }
+  body { font-family: "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  ::selection { background: #c7d2fe; color: #1e1b4b; }
+
+  * { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* 左侧全局导航 */
+  .nav-btn { color: #334155; transition: background-color .15s ease, color .15s ease; }
+  .nav-btn:hover { background: rgba(255, 255, 255, .7); }
+  .nav-btn.is-active { background: #6366f1; color: #fff; font-weight: 500; box-shadow: 0 1px 2px rgba(99, 102, 241, .3); }
+  .nav-btn .nav-icon { opacity: .75; }
+  .nav-btn.is-active .nav-icon { opacity: 1; }
+
+  /* 会议记录列表 */
+  .record { transition: background-color .15s ease, box-shadow .15s ease; }
+  .record:hover { background: #f8fafc; }
+  .record.is-active { background: #eef2ff; box-shadow: inset 0 0 0 1px #c7d2fe; }
+  .record.is-active .record-title { color: #4338ca; }
+  .record.is-active .record-icon { background: #c7d2fe; color: #4338ca; }
+  .record.is-selected { background: #eef2ff; box-shadow: inset 0 0 0 1px #a5b4fc; }
+  .record-check { display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex-shrink: 0; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #fff; font-size: 10px; line-height: 1; }
+  .record-check::after { content: ""; }
+  .record.is-selected .record-check { border-color: #6366f1; background: #6366f1; }
+  .record.is-selected .record-check::after { content: "\2713"; }
+
+  /* 工作区标签页 */
+  .ws-tab { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; border-bottom: 2px solid transparent; padding: .75rem .7rem; font-size: .875rem; color: #64748b; transition: color .15s ease, border-color .15s ease; }
+  .ws-tab:hover { color: #1e293b; }
+  .ws-tab.is-active { color: #4338ca; border-color: #6366f1; font-weight: 500; }
+
+  /* 新建会议弹窗标签 */
+  .nm-tab { border-radius: .5rem; padding: .4rem .7rem; font-size: .8125rem; color: #475569; transition: background-color .15s ease; }
+  .nm-tab:hover { background: #f1f5f9; }
+  .nm-tab.is-active { background: #eef2ff; color: #4338ca; font-weight: 500; box-shadow: inset 0 0 0 1px #c7d2fe; }
+
+  /* 分段控件 */
+  .seg-btn { border-radius: .375rem; padding: .3rem .65rem; font-size: .75rem; color: #64748b; transition: all .15s ease; }
+  .seg-btn.is-active { background: #fff; color: #4338ca; box-shadow: 0 1px 2px rgba(15, 23, 42, .08); font-weight: 500; }
+
+  /* 折叠面板 */
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] .chev { transform: rotate(90deg); }
+
+  /* 双语对照显隐 */
+  .trans-en { display: none; }
+  body.show-translation .trans-en { display: block; }
+  .hide-en .live-en { display: none; }
+
+  /* 表单 */
+  .field { height: 2.25rem; width: 100%; border-radius: .5rem; border: 1px solid #e2e8f0; background: #fff; padding: 0 .75rem; font-size: .875rem; color: #0f172a; outline: none; transition: border-color .15s ease, box-shadow .15s ease; }
+  .field:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129, 140, 248, .2); }
+  .field::placeholder { color: #94a3b8; }
+  textarea.field { height: auto; padding: .625rem .75rem; line-height: 1.6; resize: vertical; }
+
+  /* 实时字幕波形 */
+  .wave-bar { width: 3px; border-radius: 999px; background: #a5b4fc; transform: scaleY(.5); animation: wave 1.1s ease-in-out infinite; animation-play-state: paused; transition: background .2s ease; }
+  .recording .wave-bar { animation-play-state: running; background: #6366f1; }
+  @keyframes wave { 0%, 100% { transform: scaleY(.5); } 50% { transform: scaleY(1); } }
+
+  /* 动画 */
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise .35s ease-out both; }
+
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+  .typing-dot { animation: blink 1.1s infinite; }
+  .typing-dot:nth-child(2) { animation-delay: .15s; }
+  .typing-dot:nth-child(3) { animation-delay: .3s; }
+
+  @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, .5); } 70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); } 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); } }
+  .rec-dot { animation: pulse-ring 1.4s ease-out infinite; }
+
+  /* 首页光晕 */
+  .hero-orb { position: absolute; right: -7rem; top: -1rem; width: 640px; height: 640px; pointer-events: none; opacity: .9;
+    background:
+      radial-gradient(circle at 34% 30%, rgba(255, 255, 255, .95) 0%, rgba(224, 231, 255, .95) 14%, rgba(196, 209, 255, .9) 34%, rgba(165, 180, 252, .78) 52%, rgba(167, 139, 250, .45) 64%, rgba(196, 181, 253, 0) 76%);
+    -webkit-mask-image: radial-gradient(circle closest-side, black 62%, transparent 82%);
+    mask-image: radial-gradient(circle closest-side, black 62%, transparent 82%);
+  }
+</style>
+</head>
+
+<body class="bg-white text-slate-900 antialiased show-translation">
+<div class="flex h-dvh overflow-hidden bg-white text-slate-900">
+
+  <!-- ==================== 全局侧栏 ==================== -->
+  <aside class="hidden w-[200px] shrink-0 flex-col bg-gradient-to-b from-indigo-50 via-violet-50/70 to-indigo-100/70 px-4 py-4 md:flex">
+    <button onclick="switchView('home')" class="flex items-center gap-2 px-3 py-1.5 text-left">
+      <span class="flex size-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
+        <i data-lucide="audio-lines" class="size-3.5" aria-hidden="true"></i>
+      </span>
+      <span class="text-sm font-bold leading-tight text-indigo-600">Smart Meeting Government</span>
+    </button>
+
+    <nav aria-label="主导航" class="mt-5 flex-1 overflow-y-auto no-scrollbar">
+      <ul class="flex flex-col gap-1.5">
+        <li>
+          <button data-nav="home" onclick="switchView('home')" class="nav-btn flex h-9 w-full items-center gap-2.5 rounded-lg px-4 text-sm">
+            <i data-lucide="house" class="nav-icon size-4" aria-hidden="true"></i>首页
+          </button>
+        </li>
+        <li>
+          <button data-nav="workspace" onclick="openWorkspace()" class="nav-btn flex h-9 w-full items-center gap-2.5 rounded-lg px-4 text-sm">
+            <i data-lucide="file-text" class="nav-icon size-4" aria-hidden="true"></i>我的记录
+          </button>
+        </li>
+        <li>
+          <button data-nav="live" onclick="switchView('live')" class="nav-btn flex h-9 w-full items-center gap-2.5 rounded-lg px-4 text-sm">
+            <i data-lucide="radio" class="nav-icon size-4" aria-hidden="true"></i>实时字幕
+          </button>
+        </li>
+        <li>
+          <button data-nav="favorites" onclick="openFavorites()" class="nav-btn flex h-9 w-full items-center gap-2.5 rounded-lg px-4 text-sm">
+            <i data-lucide="star" class="nav-icon size-4" aria-hidden="true"></i>我的收藏
+          </button>
+        </li>
+        <li>
+          <button data-nav="shares" onclick="openShares()" class="nav-btn flex h-9 w-full items-center gap-2.5 rounded-lg px-4 text-sm">
+            <i data-lucide="users" class="nav-icon size-4" aria-hidden="true"></i>我的分享
+          </button>
+        </li>
+        <li>
+          <button data-nav="discover" onclick="openDiscover()" class="nav-btn flex h-9 w-full items-center gap-2.5 rounded-lg px-4 text-sm">
+            <i data-lucide="radar" class="nav-icon size-4" aria-hidden="true"></i>发现
+          </button>
+        </li>
+        <li>
+          <button data-nav="trash" onclick="openTrash()" class="nav-btn flex h-9 w-full items-center gap-2.5 rounded-lg px-4 text-sm">
+            <i data-lucide="trash-2" class="nav-icon size-4" aria-hidden="true"></i>回收站
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="mt-4 flex flex-col gap-2.5 pt-2">
+      <button onclick="demoAction('企业 API 接入')" class="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-emerald-50 p-3 text-left shadow-sm ring-1 ring-white">
+        <p class="text-sm font-bold text-slate-800">企业<span class="text-emerald-500">API</span>接入</p>
+        <p class="mt-1 text-xs leading-relaxed text-slate-600">大模型能力<br />全面开放集成</p>
+        <span class="mt-2 inline-flex items-center text-xs font-medium text-emerald-600">
+          立即体验<i data-lucide="chevron-right" class="size-3" aria-hidden="true"></i>
+        </span>
+        <span aria-hidden="true" class="absolute -bottom-4 -right-3 flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-200 to-teal-300">
+          <i data-lucide="plug" class="size-6 -rotate-45 text-white"></i>
+        </span>
+      </button>
+
+      <button data-nav="settings" onclick="switchView('settings')" class="nav-btn flex h-9 w-full items-center gap-2.5 rounded-lg px-4 text-sm">
+        <i data-lucide="settings" class="nav-icon size-4" aria-hidden="true"></i>设置与模型
+      </button>
+      <button onclick="demoAction('帮助与反馈')" class="flex items-center gap-2.5 rounded-lg px-4 py-1 text-xs text-slate-700 transition hover:text-indigo-600">
+        <i data-lucide="circle-help" class="size-4" aria-hidden="true"></i>帮助与反馈
+      </button>
+    </div>
+  </aside>
+
+  <main class="relative flex-1 overflow-hidden bg-gradient-to-b from-white via-white to-indigo-50/60">
+
+    <!-- ==================== 首页 ==================== -->
+    <section id="view-home" class="relative h-full overflow-y-auto overflow-x-hidden">
+      <div class="hero-orb"></div>
+      <div class="relative mx-auto flex max-w-6xl flex-col px-6 pb-16 sm:px-8 lg:px-10">
+        <header class="flex items-center justify-end gap-6 pt-6">
+          <span class="hidden items-center gap-1.5 rounded-md bg-orange-50 px-3 py-1 text-xs text-slate-700 ring-1 ring-orange-100 sm:inline-flex">
+            <i data-lucide="lock" class="size-3.5 text-orange-400" aria-hidden="true"></i>
+            全本地部署可选 <span class="text-orange-500">会议隐私不出内网</span>
+          </span>
+          <button onclick="openNewMeeting('upload')" class="inline-flex h-8 items-center rounded-md bg-indigo-500 px-4 text-sm font-medium text-white transition hover:bg-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+            新建会议
+          </button>
+        </header>
+
+        <h1 class="mt-24 text-balance text-4xl font-bold tracking-tight text-slate-900 md:text-5xl">
+          听记一下，<span class="bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">轻松记录</span>
+        </h1>
+        <p class="mt-4 max-w-xl text-sm leading-6 text-slate-500">
+          上传会议录音或粘贴对话文本，自动完成转写、说话人分离与结构化纪要；支持中英等多语种逐句互译。
+        </p>
+
+        <!-- 功能卡片 -->
+        <ul class="mt-16 grid max-w-[940px] grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <li>
+            <button onclick="switchView('live')" class="group relative flex h-[150px] w-full flex-col justify-end rounded-xl bg-gradient-to-b from-violet-100/90 to-white/60 p-5 text-left shadow-sm ring-1 ring-white/80 backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md">
+              <span class="absolute -top-3 left-5 flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-400 text-white shadow-md" aria-hidden="true">
+                <i data-lucide="audio-lines" class="size-5"></i>
+              </span>
+              <span class="absolute right-0 top-0 rounded-bl-lg rounded-tr-xl bg-violet-400 px-2 py-0.5 text-[10px] text-white">会议神器</span>
+              <h2 class="text-base font-bold text-slate-900">开启实时记录</h2>
+              <p class="mt-1 text-xs text-slate-600">实时语音转文字</p>
+              <p class="mt-1 text-xs text-slate-600">同步翻译，智能总结要点</p>
+            </button>
+          </li>
+          <li>
+            <button onclick="openNewMeeting('upload', true)" class="group relative flex h-[150px] w-full flex-col justify-end rounded-xl bg-gradient-to-b from-cyan-50/90 to-white/60 p-5 text-left shadow-sm ring-1 ring-white/80 backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md">
+              <span class="absolute -top-3 left-5 flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 text-white shadow-md" aria-hidden="true">
+                <i data-lucide="upload" class="size-5"></i>
+              </span>
+              <span class="absolute right-0 top-0 rounded-bl-lg rounded-tr-xl bg-cyan-400 px-2 py-0.5 text-[10px] text-white">同译必备</span>
+              <h2 class="text-base font-bold text-slate-900">上传音视频</h2>
+              <p class="mt-1 text-xs text-slate-600">音视频转文字</p>
+              <p class="mt-1 text-xs text-slate-600">区分发言人，一键导出</p>
+            </button>
+          </li>
+          <li>
+            <button onclick="openNewMeeting('mic', true)" class="group relative flex h-[150px] w-full flex-col justify-end rounded-xl bg-gradient-to-b from-rose-50/90 to-white/60 p-5 text-left shadow-sm ring-1 ring-white/80 backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md">
+              <span class="absolute -top-3 left-5 flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-400 text-white shadow-md" aria-hidden="true">
+                <i data-lucide="mic" class="size-5"></i>
+              </span>
+              <span class="absolute right-0 top-0 rounded-bl-lg rounded-tr-xl bg-rose-400 px-2 py-0.5 text-[10px] text-white">即录即转</span>
+              <h2 class="text-base font-bold text-slate-900">本地录音</h2>
+              <p class="mt-1 text-xs text-slate-600">浏览器直接录音</p>
+              <p class="mt-1 text-xs text-slate-600">录完自动转写并生成纪要</p>
+            </button>
+          </li>
+          <li>
+            <button onclick="openNewMeeting('text', true)" class="group relative flex h-[150px] w-full flex-col justify-end rounded-xl bg-gradient-to-b from-blue-50/90 to-white/60 p-5 text-left shadow-sm ring-1 ring-white/80 backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md">
+              <span class="absolute -top-3 left-5 flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-400 text-white shadow-md" aria-hidden="true">
+                <i data-lucide="clipboard-list" class="size-5"></i>
+              </span>
+              <span class="absolute right-0 top-0 rounded-bl-lg rounded-tr-xl bg-blue-400 px-2 py-0.5 text-[10px] text-white">AI 速记</span>
+              <h2 class="text-base font-bold text-slate-900">粘贴文本转纪要</h2>
+              <p class="mt-1 text-xs text-slate-600">输入会议转写文本</p>
+              <p class="mt-1 text-xs text-slate-600">术语纠错，多语言翻译</p>
+            </button>
+          </li>
+        </ul>
+
+        <!-- 能力标签 -->
+        <div class="mt-8 flex max-w-[600px] flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500">
+          <span class="inline-flex items-center gap-1.5"><i data-lucide="check" class="size-3.5 text-emerald-500" aria-hidden="true"></i>说话人分离</span>
+          <span class="inline-flex items-center gap-1.5"><i data-lucide="check" class="size-3.5 text-emerald-500" aria-hidden="true"></i>结构化纪要</span>
+          <span class="inline-flex items-center gap-1.5"><i data-lucide="check" class="size-3.5 text-emerald-500" aria-hidden="true"></i>中英逐句互译</span>
+          <span class="inline-flex items-center gap-1.5"><i data-lucide="check" class="size-3.5 text-emerald-500" aria-hidden="true"></i>全本地部署</span>
+        </div>
+
+        <p class="mt-10 text-[11px] text-slate-400">本机部署 · 会议内容只在本地处理 · 可接入你配置的大模型与讯飞实时转写</p>
+      </div>
+    </section>
+
+    <!-- ==================== 工作台 ==================== -->
+    <section id="view-workspace" class="hidden h-full">
+      <div class="flex h-full">
+
+        <!-- 会议记录列表 -->
+        <aside class="hidden w-[264px] shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
+          <div class="flex h-12 items-center gap-2 border-b border-slate-200 px-4">
+            <button onclick="switchView('home')" class="flex items-center gap-2">
+              <i data-lucide="audio-lines" class="size-4 text-slate-800" aria-hidden="true"></i>
+              <span class="whitespace-nowrap text-xs font-semibold tracking-tight">Smart Meeting Government</span>
+            </button>
+            <span class="ml-auto rounded-md border border-slate-200 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">BETA</span>
+          </div>
+
+          <div class="p-3">
+            <button onclick="openNewMeeting('upload')" class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-indigo-500 text-sm font-medium text-white shadow-sm shadow-indigo-500/30 transition hover:bg-indigo-600">
+              <i data-lucide="plus" class="size-4" aria-hidden="true"></i>新建会议
+            </button>
+          </div>
+
+          <div class="px-3">
+            <div class="relative">
+              <i data-lucide="search" class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true"></i>
+              <input id="recordSearch" oninput="filterRecords(this.value)" type="text" placeholder="搜索会议记录" class="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div class="mt-1.5 flex items-center justify-end">
+              <button id="selectModeBtn" onclick="toggleSelectMode()" class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600" title="批量选择并删除会议记录">
+                <i data-lucide="list-checks" class="size-3.5" aria-hidden="true"></i><span id="selectModeText">批量管理</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="recordList" class="mt-1.5 flex-1 overflow-y-auto px-3 pb-4">
+            <div id="recordListInner"></div>
+            <p id="recordEmpty" class="hidden px-2 py-6 text-center text-xs text-slate-400">没有匹配的会议记录</p>
+          </div>
+
+          <div id="batchBar" class="hidden border-t border-slate-200 bg-slate-50/70 px-3 py-2.5">
+            <div class="flex items-center justify-between text-xs text-slate-600">
+              <label class="inline-flex cursor-pointer items-center gap-1.5">
+                <input id="batchAll" type="checkbox" onchange="toggleSelectAll(this.checked)" class="size-3.5 accent-indigo-500" />全选
+              </label>
+              <span id="batchCount" class="text-slate-500">已选 0 条</span>
+            </div>
+            <div class="mt-2 flex gap-2">
+              <button onclick="cancelSelectMode()" class="h-8 flex-1 rounded-lg border border-slate-200 bg-white text-xs text-slate-600 transition hover:bg-slate-50">取消</button>
+              <button id="batchDeleteBtn" onclick="deleteSelectedRuns()" disabled class="h-8 flex-1 rounded-lg bg-rose-500 text-xs font-medium text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50">删除</button>
+            </div>
+          </div>
+
+                    <div class="border-t border-slate-200 p-3">
+            <div class="flex items-center justify-between text-xs text-slate-500">
+              <span class="inline-flex items-center gap-1.5"><i data-lucide="hard-drive" class="size-3.5" aria-hidden="true"></i>本地存储</span>
+              <span id="storageText">0 条记录</span>
+            </div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div id="storageBar" class="h-full w-0 rounded-full bg-indigo-400 transition-all"></div>
+            </div>
+            <button onclick="switchView('settings')" class="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-600 transition hover:bg-slate-50 hover:text-indigo-600">
+              <i data-lucide="settings" class="size-4" aria-hidden="true"></i>设置与模型
+            </button>
+          </div>
+        </aside>
+
+        <!-- 工作区主区 -->
+        <div class="flex min-w-0 flex-1 flex-col bg-white">
+          <header class="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-3">
+            <button onclick="switchView('home')" class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 md:hidden" aria-label="返回首页">
+              <i data-lucide="arrow-left" class="size-4"></i>
+            </button>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
+                <span>我的记录</span>
+                <i data-lucide="chevron-right" class="size-3" aria-hidden="true"></i>
+                <span class="truncate">会议详情</span>
+              </div>
+              <div class="mt-0.5 flex items-center gap-2">
+                <h1 id="wsTitle" class="truncate text-lg font-semibold tracking-tight text-slate-900">会议详情</h1>
+                <span id="wsStatus" class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 ring-1 ring-emerald-100">已完成</span>
+              </div>
+              <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+                <span class="inline-flex items-center gap-1"><i data-lucide="clock" class="size-3.5" aria-hidden="true"></i><span id="wsDuration">32:18</span></span>
+                <span class="text-slate-300">·</span>
+                <span class="inline-flex items-center gap-1"><i data-lucide="users" class="size-3.5" aria-hidden="true"></i><span id="wsSpeakers">5 位发言人</span></span>
+                <span class="text-slate-300">·</span>
+                <span class="inline-flex items-center gap-1"><i data-lucide="languages" class="size-3.5" aria-hidden="true"></i><span id="wsLang">中文</span></span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="openNewMeeting('upload')" class="hidden h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs text-slate-600 transition hover:bg-slate-50 sm:inline-flex">
+                <i data-lucide="plus" class="size-3.5" aria-hidden="true"></i>新建会议
+              </button>
+              <button onclick="switchTab('export')" class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-medium text-white transition hover:bg-slate-800">
+                <i data-lucide="download" class="size-3.5" aria-hidden="true"></i>导出
+              </button>
+              <button id="wsShare" onclick="shareCurrentRun()" class="hidden inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600" aria-label="分享当前记录" title="生成只读分享链接">
+                <i data-lucide="share-2" class="size-3.5" aria-hidden="true"></i>分享
+              </button>
+              <button id="wsFavorite" onclick="toggleCurrentFavorite()" class="hidden inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs text-slate-600 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600" aria-label="收藏当前记录" title="收藏当前记录">
+                <i data-lucide="star" class="size-3.5" aria-hidden="true"></i>收藏
+              </button>
+              <button id="wsDelete" onclick="deleteCurrentRun()" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600" aria-label="删除当前记录" title="删除当前记录">
+                <i data-lucide="trash-2" class="size-3.5" aria-hidden="true"></i>删除
+              </button>
+            </div>
+          </header>
+
+          <div id="wsScroll" class="flex-1 overflow-y-auto">
+            <div class="mx-auto max-w-5xl px-6 py-5">
+
+              <!-- 会议详情（数据由 /api/runs/{id} 动态渲染） -->
+              <div id="meetingDetail">
+                <!-- 指标 -->
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="users" class="size-3.5" aria-hidden="true"></i>讲话人数</div>
+                    <p id="wsStatSpeakers" class="mt-2 text-2xl font-semibold tracking-tight text-slate-900">—</p>
+                    <p class="mt-0.5 text-[11px] text-slate-400">已自动识别</p>
+                  </div>
+                  <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="list-checks" class="size-3.5" aria-hidden="true"></i>转写段数</div>
+                    <p id="wsStatSegments" class="mt-2 text-2xl font-semibold tracking-tight text-slate-900">—</p>
+                    <p class="mt-0.5 text-[11px] text-slate-400">已做同音字纠错</p>
+                  </div>
+                  <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="folder" class="size-3.5" aria-hidden="true"></i>议题数</div>
+                    <p id="wsStatTopics" class="mt-2 text-2xl font-semibold tracking-tight text-slate-900">—</p>
+                    <p class="mt-0.5 text-[11px] text-slate-400">含结论</p>
+                  </div>
+                  <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="check" class="size-3.5" aria-hidden="true"></i>待办数</div>
+                    <p id="wsStatActions" class="mt-2 text-2xl font-semibold tracking-tight text-slate-900">—</p>
+                    <p class="mt-0.5 text-[11px] text-slate-400">已分配负责人</p>
+                  </div>
+                </div>
+
+                <!-- 标签栏 -->
+                <div id="wsTabs" class="sticky top-0 z-10 -mx-6 mt-4 flex items-center gap-1 overflow-x-auto border-b border-slate-200 bg-white/90 px-6 backdrop-blur no-scrollbar">
+                  <button class="ws-tab is-active" data-tab="summary" onclick="switchTab('summary')"><i data-lucide="clipboard-list" class="size-4" aria-hidden="true"></i>纪要</button>
+                  <button class="ws-tab" data-tab="transcript" onclick="switchTab('transcript')"><i data-lucide="message-square" class="size-4" aria-hidden="true"></i>校对稿</button>
+                  <button class="ws-tab" data-tab="raw" onclick="switchTab('raw')"><i data-lucide="file-text" class="size-4" aria-hidden="true"></i>原始转写</button>
+                  <button class="ws-tab" data-tab="translation" onclick="switchTab('translation')"><i data-lucide="languages" class="size-4" aria-hidden="true"></i>双语翻译</button>
+                  <button class="ws-tab" data-tab="qa" onclick="switchTab('qa')"><i data-lucide="sparkles" class="size-4" aria-hidden="true"></i>会议问答</button>
+                  <button class="ws-tab" data-tab="export" onclick="switchTab('export')"><i data-lucide="download" class="size-4" aria-hidden="true"></i>导出</button>
+                </div>
+
+                <div class="py-5">
+                  <div class="ws-panel space-y-4" data-panel="summary">
+                    <div id="summaryBody" class="space-y-4"></div>
+                  </div>
+
+                  <div class="ws-panel hidden" data-panel="transcript">
+                    <div id="transcriptBody"></div>
+                  </div>
+
+                  <div class="ws-panel hidden" data-panel="raw">
+                    <div id="rawBody"></div>
+                  </div>
+
+                  <div class="ws-panel hidden" data-panel="translation">
+                    <div id="translationBody"></div>
+                  </div>
+
+                  <!-- 会议问答 -->
+                  <div class="ws-panel hidden" data-panel="qa">
+                    <div class="mb-3 flex items-start justify-between gap-4">
+                      <div>
+                        <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                          <i data-lucide="message-square" class="size-4 text-indigo-500" aria-hidden="true"></i>会议问答
+                        </h3>
+                        <p class="mt-1 text-xs leading-5 text-slate-500">可以追问会议里的任何细节，也可以让我换种语气 / 语言改写、整理成表格或邮件。</p>
+                      </div>
+                      <span class="hidden shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] text-slate-500 sm:inline">上下文：纪要 + 原文</span>
+                    </div>
+
+                    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                      <div id="qaMessages" class="max-h-[420px] min-h-[260px] space-y-4 overflow-y-auto p-5"></div>
+
+                      <div class="border-t border-slate-100 bg-slate-50/50 p-4">
+                        <div class="mb-2.5 flex flex-wrap items-center gap-1.5">
+                          <button onclick="askPreset('todo')" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600">🧾 汇总待办</button>
+                          <button onclick="askPreset('email')" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600">✉️ 写成邮件</button>
+                          <button onclick="askPreset('english')" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600">🌐 英文纪要</button>
+                          <button onclick="askPreset('disagree')" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600">🤔 不同意见</button>
+                        </div>
+                        <div class="flex items-end gap-2">
+                          <input id="qaInput" type="text" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendQuestion();}" placeholder="就会议内容提问，或让我总结 / 翻译 / 改写成邮件…" class="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100" />
+                          <button onclick="sendQuestion()" class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white transition hover:bg-indigo-600" aria-label="发送">
+                            <i data-lucide="send" class="size-4" aria-hidden="true"></i>
+                          </button>
+                        </div>
+                        <p class="mt-2 text-[10px] text-slate-400">回答基于本场会议的纪要、摘要与转写，由你配置的大模型生成。</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="ws-panel hidden" data-panel="export">
+                    <div id="exportBody"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 其它记录的空状态 -->
+              <div id="meetingEmpty" class="hidden">
+                <div class="mt-10 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 px-6 py-20 text-center">
+                  <span class="flex size-14 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-200">
+                    <i data-lucide="file-text" class="size-6"></i>
+                  </span>
+                  <h2 id="meetingEmptyTitle" class="mt-4 text-base font-semibold text-slate-800">还没有会议记录</h2>
+                  <p id="meetingEmptyTip" class="mt-1.5 max-w-sm text-sm leading-6 text-slate-500">上传音频或粘贴文本，生成第一份结构化纪要。</p>
+                  <button onclick="openNewMeeting('upload')" class="mt-5 inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-500 px-4 text-sm font-medium text-white transition hover:bg-indigo-600">
+                    <i data-lucide="plus" class="size-4" aria-hidden="true"></i>新建会议
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 实时字幕 ==================== -->
+    <section id="view-live" class="hidden h-full overflow-y-auto">
+      <div class="mx-auto max-w-6xl px-6 py-6 lg:px-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-semibold tracking-tight text-slate-900">实时字幕</h1>
+              <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600 ring-1 ring-indigo-100">会议神器</span>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">边说边转写，中英逐句对照；会议结束后一键生成结构化纪要。</p>
+          </div>
+          <button onclick="switchView('home')" class="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 md:hidden" aria-label="返回首页">
+            <i data-lucide="arrow-left" class="size-4"></i>
+          </button>
+        </div>
+
+        <div class="mt-6 grid gap-4 lg:grid-cols-[1fr_320px]">
+          <div class="space-y-4">
+            <!-- 控制卡 -->
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                  <span id="liveStatusDot" class="size-2 rounded-full bg-slate-300"></span>
+                  <span id="liveStatus" class="text-sm font-medium text-slate-700">未开始</span>
+                  <span id="liveEngine" class="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">讯飞 rtasr</span>
+                </div>
+                <span id="liveTimer" class="font-mono text-2xl tabular-nums tracking-tight text-slate-900">00:00</span>
+              </div>
+
+              <div id="waveform" class="mt-5 flex h-16 items-center justify-between gap-1 px-1"></div>
+
+              <div class="mt-5 flex flex-wrap items-center gap-2">
+                <button id="liveBtn" onclick="toggleLive()" class="inline-flex h-9 items-center gap-2 rounded-lg bg-indigo-500 px-4 text-sm font-medium text-white shadow-sm shadow-indigo-500/30 transition hover:bg-indigo-600">
+                  <span id="liveBtnDot" class="size-2 rounded-full bg-white/90"></span>
+                  <span id="liveBtnLabel">开始实时转写</span>
+                </button>
+                <button onclick="generateFromLive()" class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-600 transition hover:bg-slate-50">
+                  <i data-lucide="sparkles" class="size-4" aria-hidden="true"></i>生成纪要
+                </button>
+                <button id="liveExportBtn" onclick="exportLiveAudio()" disabled title="停止转写后可导出本次录音" class="inline-flex h-9 cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-600 opacity-40 transition hover:bg-slate-50">
+                  <i data-lucide="download" class="size-4" aria-hidden="true"></i>导出音频
+                </button>
+                <button onclick="clearLive()" class="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm text-slate-500 transition hover:bg-slate-100">
+                  <i data-lucide="trash-2" class="size-4" aria-hidden="true"></i>清空
+                </button>
+              </div>
+              <p class="mt-3 text-xs text-slate-400">已配置讯飞 key 时走云端实时转写（低延迟）；未配置则自动回退浏览器 Web Speech API（Chrome / Edge）。转写期间会同时在本地录制会议音频，停止后可点「导出音频」保存，录音不上传服务器。</p>
+            </div>
+
+            <!-- 字幕流 -->
+            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              <div class="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+                <div class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <i data-lucide="subtitles" class="size-4 text-indigo-500" aria-hidden="true"></i>实时转写
+                </div>
+                <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-slate-500">
+                  <span class="relative inline-flex">
+                    <input id="liveTranslate" type="checkbox" class="peer sr-only" checked onchange="toggleLiveTranslation(this.checked)" />
+                    <span class="h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-500"></span>
+                    <span class="pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
+                  </span>
+                  同步翻译
+                </label>
+              </div>
+              <div id="liveTranscript" class="h-[420px] overflow-y-auto px-5 py-4">
+                <div id="livePlaceholder" class="flex h-full flex-col items-center justify-center text-center">
+                  <span class="flex size-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-500"><i data-lucide="mic" class="size-5"></i></span>
+                  <p class="mt-3 text-sm font-medium text-slate-700">点击「开始实时转写」</p>
+                  <p class="mt-1 text-xs text-slate-400">开始后，识别结果会实时显示在这里</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧设置 -->
+          <div class="space-y-4">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <i data-lucide="settings" class="size-4 text-slate-500" aria-hidden="true"></i>识别设置
+              </h3>
+              <div class="mt-3 space-y-3">
+                <div>
+                  <label class="text-xs text-slate-500">语言</label>
+                  <select id="liveLang" class="field mt-1">
+                    <option value="zh-CN">中文 (zh-CN)</option>
+                    <option value="en-US">英文 (en-US)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500">翻译目标</label>
+                  <select id="liveTarget" class="field mt-1">
+                    <option value="en">英语 (en)</option>
+                  </select>
+                </div>
+                <label class="flex cursor-pointer items-center justify-between gap-3 pt-1">
+                  <span class="text-sm text-slate-700">说话人分离</span>
+                  <span class="relative inline-flex">
+                    <input type="checkbox" class="peer sr-only" checked />
+                    <span class="h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-500"></span>
+                    <span class="pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
+                  </span>
+                </label>
+                <label class="flex cursor-pointer items-center justify-between gap-3">
+                  <span class="text-sm text-slate-700">LLM 同音字纠错</span>
+                  <span class="relative inline-flex">
+                    <input type="checkbox" class="peer sr-only" checked />
+                    <span class="h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-500"></span>
+                    <span class="pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <i data-lucide="tag" class="size-4 text-amber-500" aria-hidden="true"></i>术语表
+                <span id="liveGlossCount" class="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">未导入</span>
+              </h3>
+              <p class="mt-1 text-[11px] leading-5 text-slate-400">生成纪要时用于纠错、统一专有名词写法</p>
+              <div id="liveGlossChips" class="mt-2.5 flex flex-wrap gap-1.5"></div>
+              <textarea id="liveGlossText" rows="2" class="field mt-2 text-xs" placeholder="逗号分隔，例如：Smart Meeting Government, DeepSeek, 灰度发布"></textarea>
+              <div class="mt-2 flex items-center gap-2">
+                <button onclick="pickGlossaryFile()" class="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-600 transition hover:bg-slate-50">
+                  <i data-lucide="upload" class="size-3.5" aria-hidden="true"></i>从文件导入
+                </button>
+                <button onclick="saveInlineGlossary('liveGlossText')" class="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-900 text-xs font-medium text-white transition hover:bg-slate-800">
+                  <i data-lucide="check" class="size-3.5" aria-hidden="true"></i>保存
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <i data-lucide="zap" class="size-4 text-amber-500" aria-hidden="true"></i>实时要点
+              </h3>
+              <div class="mt-3 flex flex-wrap gap-1.5">
+                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-700">实时字幕</span>
+                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-700">中英互译</span>
+                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-700">性能指标</span>
+                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-700">术语表</span>
+              </div>
+              <p class="mt-3 text-xs leading-5 text-slate-400">议题、结论与待办会在会议结束后自动生成，可在「我的记录」中查看。</p>
+            </div>
+
+            <div class="rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 p-4 ring-1 ring-indigo-100">
+              <p class="flex items-center gap-1.5 text-xs font-medium text-indigo-700"><i data-lucide="lock" class="size-3.5" aria-hidden="true"></i>隐私说明</p>
+              <p class="mt-1.5 text-xs leading-5 text-indigo-900/70">讯飞 key 只经浏览器传给本地中继后端，服务端不内置 key；也可切换全本地模型，音频不出内网。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 设置 ==================== -->
+    <section id="view-settings" class="hidden h-full overflow-y-auto">
+      <div class="mx-auto max-w-5xl px-6 py-6 lg:px-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button onclick="switchView('home')" class="flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 md:hidden" aria-label="返回首页">
+              <i data-lucide="arrow-left" class="size-4"></i>
+            </button>
+            <div>
+              <h1 class="text-xl font-semibold tracking-tight text-slate-900">设置</h1>
+              <p class="mt-1 text-sm text-slate-500">模型与转写 key 只保存在本机，不会上传。</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="resetSettings()" class="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-600 transition hover:bg-slate-50">撤销修改</button>
+            <button onclick="saveSettings()" class="h-9 rounded-lg bg-indigo-500 px-4 text-sm font-medium text-white shadow-sm shadow-indigo-500/30 transition hover:bg-indigo-600">保存设置</button>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-4 lg:grid-cols-2">
+
+          <!-- 大模型 -->
+          <div class="rounded-2xl border border-slate-200 bg-white p-5">
+            <div class="flex items-center gap-2">
+              <span class="flex size-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600"><i data-lucide="sparkles" class="size-4" aria-hidden="true"></i></span>
+              <div>
+                <h2 class="text-sm font-semibold text-slate-800">大模型 (LLM)</h2>
+                <p class="text-[11px] text-slate-400">用于纠错、摘要、翻译与问答</p>
+              </div>
+            </div>
+            <div class="mt-4 space-y-3">
+              <div>
+                <label class="text-xs text-slate-500">模型服务</label>
+                <select id="setLlmProvider" class="field mt-1"></select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">API Key</label>
+                <input id="setLlmKey" type="password" class="field mt-1" placeholder="sk-..." autocomplete="off" />
+                <p id="ollamaHint" class="mt-1 text-[11px] text-slate-400">留空则回退本机 Ollama（需已启动），不读取 .env。</p>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-slate-500">Base URL</label>
+                  <input id="setLlmBase" type="text" class="field mt-1" placeholder="https://api.deepseek.com" />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500">模型名</label>
+                  <input id="setLlmModel" type="text" class="field mt-1" placeholder="deepseek-chat" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 讯飞 -->
+          <div class="rounded-2xl border border-slate-200 bg-white p-5">
+            <div class="flex items-center gap-2">
+              <span class="flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><i data-lucide="radio" class="size-4" aria-hidden="true"></i></span>
+              <div>
+                <h2 class="text-sm font-semibold text-slate-800">实时转写（讯飞）</h2>
+                <p class="text-[11px] text-slate-400">云端实时转写，速度接近讯飞听见</p>
+              </div>
+              <span id="xfBadge" class="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">未配置</span>
+            </div>
+            <div class="mt-4 space-y-3">
+              <div>
+                <label class="text-xs text-slate-500">AppID</label>
+                <input id="setXfAppid" type="text" class="field mt-1" placeholder="讯飞控制台 AppID" autocomplete="off" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">API Key</label>
+                <input id="setXfApikey" type="password" class="field mt-1" placeholder="接口密钥" autocomplete="off" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">中继地址</label>
+                <input id="setWsUrl" type="text" class="field mt-1" value="ws://127.0.0.1:8000/rtasr" readonly />
+                <p class="mt-1 text-[11px] text-slate-400">key 只经浏览器传给本地中继后端，服务端不内置 key。</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 识别与翻译 -->
+          <div class="rounded-2xl border border-slate-200 bg-white p-5">
+            <div class="flex items-center gap-2">
+              <span class="flex size-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600"><i data-lucide="languages" class="size-4" aria-hidden="true"></i></span>
+              <div>
+                <h2 class="text-sm font-semibold text-slate-800">识别与翻译</h2>
+                <p class="text-[11px] text-slate-400">ASR、说话人分离与双语输出</p>
+              </div>
+            </div>
+            <div class="mt-4 space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-slate-500">语言</label>
+                  <select id="setLang" class="field mt-1">
+                    <option value="">自动检测</option>
+                    <option value="zh">中文 (zh)</option>
+                    <option value="en">英文 (en)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500">双语翻译</label>
+                  <select id="setTarget" class="field mt-1">
+                    <option value="">不翻译</option>
+                    <option value="en">英语 (en)</option>
+                    <option value="ja">日语 (ja)</option>
+                    <option value="ko">韩语 (ko)</option>
+                    <option value="de">德语 (de)</option>
+                    <option value="fr">法语 (fr)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-slate-500">ASR 模型</label>
+                  <select id="setAsrModel" class="field mt-1">
+                    <option>tiny</option>
+                    <option>base</option>
+                    <option selected>small</option>
+                    <option>medium</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500">说话人数（0 = 自动）</label>
+                  <input id="setNumSpeakers" type="number" min="0" max="20" value="0" class="field mt-1" />
+                </div>
+              </div>
+              <div class="space-y-2.5 pt-1">
+                <label class="flex cursor-pointer items-center justify-between gap-3">
+                  <span class="text-sm text-slate-700">LLM 同音字纠错</span>
+                  <span class="relative inline-flex">
+                    <input id="setCorrect" type="checkbox" class="peer sr-only" checked />
+                    <span class="h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-500"></span>
+                    <span class="pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
+                  </span>
+                </label>
+                <label class="flex cursor-pointer items-center justify-between gap-3">
+                  <span class="text-sm text-slate-700">说话人分离</span>
+                  <span class="relative inline-flex">
+                    <input id="setDiarize" type="checkbox" class="peer sr-only" checked />
+                    <span class="h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-500"></span>
+                    <span class="pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
+                  </span>
+                </label>
+                <label class="flex cursor-pointer items-center justify-between gap-3">
+                  <span class="text-sm text-slate-700">LLM 说话人分析（文本 / 字幕）</span>
+                  <span class="relative inline-flex">
+                    <input id="setSpeakerLlm" type="checkbox" class="peer sr-only" checked />
+                    <span class="h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-500"></span>
+                    <span class="pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 术语表已移到各功能页右侧信息卡下方 -->
+
+        </div>
+
+        <div class="mt-5 flex items-start gap-2 rounded-xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500 ring-1 ring-slate-100">
+          <i data-lucide="lock" class="mt-0.5 size-3.5 shrink-0 text-slate-400" aria-hidden="true"></i>
+          配置会写入本机 data/llm_settings.json 与 data/xfyun_settings.json，打包分发时会剔除；网页端只认这里填的 key，不读取 .env。
+        </div>
+
+        <p class="mt-6 text-[11px] text-slate-400">Smart Meeting Government · 会议智治与跨语言沟通平台</p>
+      </div>
+    </section>
+
+    <!-- ==================== 新建会议(整页) ==================== -->
+    <section id="view-new" class="hidden h-full overflow-y-auto">
+      <div class="mx-auto max-w-6xl px-6 py-6 lg:px-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <button onclick="closeNewMeeting()" class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50" aria-label="返回">
+              <i data-lucide="arrow-left" class="size-4"></i>
+            </button>
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 id="nmHeadTitle" class="text-xl font-semibold tracking-tight text-slate-900">新建会议</h1>
+                <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600 ring-1 ring-indigo-100">Smart Meeting Government</span>
+              </div>
+              <p id="nmHeadSub" class="mt-1 text-sm text-slate-500">选择一种输入方式，生成结构化纪要</p>
+            </div>
+          </div>
+          <button id="nmSwitchBtn" onclick="unlockMeetMode()" class="hidden h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 transition hover:bg-slate-50">
+            <i data-lucide="shuffle" class="size-4" aria-hidden="true"></i>切换方式
+          </button>
+        </div>
+
+        <div id="nmTabs" class="mt-5 flex flex-wrap items-center gap-1.5">
+          <button class="nm-tab is-active" data-nm="upload" onclick="setMeetTab('upload')">🎧 上传音频</button>
+          <button class="nm-tab" data-nm="live" onclick="setMeetTab('live')">🎙️ 实时字幕</button>
+          <button class="nm-tab" data-nm="mic" onclick="setMeetTab('mic')">🎤 本地录音</button>
+          <button class="nm-tab" data-nm="text" onclick="setMeetTab('text')">📝 粘贴文本</button>
+        </div>
+
+        <div class="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div class="space-y-4">
+            <div id="nmBody" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
+              <!-- 上传音频 -->
+              <div class="nm-panel" data-nm-panel="upload">
+                <label id="nmDrop" for="nmFile" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-24 text-center transition duration-150 hover:border-indigo-300 hover:bg-indigo-50/40">
+                  <span id="nmDropIcon" class="pointer-events-none flex size-14 items-center justify-center rounded-full bg-white text-indigo-500 shadow-sm ring-1 ring-slate-200 transition"><i data-lucide="upload" class="size-6"></i></span>
+                  <span id="nmDropText" class="pointer-events-none mt-4 text-base font-medium text-slate-700 transition">点击或拖拽上传音视频</span>
+                  <span id="nmDropHint" class="pointer-events-none mt-1.5 text-xs text-slate-400 transition">支持 wav / mp3 / m4a / mp4 / webm，单文件 ≤ 2 GB，可多选</span>
+                </label>
+                <input id="nmFile" type="file" class="hidden" accept="audio/*,video/*" multiple onchange="onFilesPicked(this)" />
+                <div id="nmFileList" class="mt-3 hidden max-h-64 space-y-1.5 overflow-y-auto pr-1"></div>
+                <p id="nmFileNotice" class="mt-2 hidden rounded-lg bg-indigo-50/70 px-3 py-2 text-[11px] leading-5 text-indigo-600 ring-1 ring-indigo-100">
+                  已按列表顺序排队：从第 1 个开始依次转写，处理完一个自动开始下一个，中途可继续添加文件。
+                </p>
+                <div class="mt-3 flex items-center justify-between gap-3">
+                  <p id="nmFileName" class="min-w-0 truncate text-xs text-slate-500">未选择文件 · 支持 wav / mp3 / m4a / mp4 / webm</p>
+                  <button id="nmFileClear" onclick="clearSelectedFile()" class="hidden shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600">
+                    <i data-lucide="x" class="size-3.5" aria-hidden="true"></i><span id="nmFileClearText">移除文件</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 实时字幕 -->
+              <div class="nm-panel hidden" data-nm-panel="live">
+                <div class="flex items-start gap-3 rounded-xl bg-violet-50/70 p-5 ring-1 ring-violet-100">
+                  <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-violet-500 shadow-sm"><i data-lucide="mic" class="size-5"></i></span>
+                  <div>
+                    <p class="text-sm font-medium text-slate-800">开启云端实时转写</p>
+                    <p class="mt-1 text-xs leading-5 text-slate-500">会议进行中边说边出字幕，支持中英逐句对照；结束后自动生成结构化纪要。需要先在设置页填写讯飞 key，未填写则回退浏览器语音识别。</p>
+                  </div>
+                </div>
+                <button onclick="closeNewMeeting();switchView('live')" class="mt-4 inline-flex h-10 items-center gap-1.5 rounded-lg bg-violet-500 px-4 text-sm font-medium text-white transition hover:bg-violet-600">
+                  <i data-lucide="arrow-right" class="size-4" aria-hidden="true"></i>打开实时字幕
+                </button>
+              </div>
+
+              <!-- 本地录音 -->
+              <div class="nm-panel hidden" data-nm-panel="mic">
+                <div class="flex flex-col items-center rounded-xl bg-slate-50/60 px-6 py-16 ring-1 ring-slate-100">
+                  <button id="micDemoBtn" onclick="toggleMic()" class="flex size-20 items-center justify-center rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-600">
+                    <i data-lucide="mic" class="size-7"></i>
+                  </button>
+                  <p id="micDemoLabel" class="mt-4 text-sm text-slate-600">点击开始录音</p>
+                  <p id="micDemoTime" class="mt-1 font-mono text-3xl tabular-nums tracking-tight text-slate-900">00:00</p>
+                  <audio id="micAudio" class="mt-3 hidden w-full max-w-sm" controls></audio>
+                </div>
+                <p class="mt-3 text-center text-xs text-slate-400">录音保存在浏览器内存中，点击「开始生成纪要」后上传到本地后端。</p>
+              </div>
+
+              <!-- 粘贴文本 -->
+              <div class="nm-panel hidden" data-nm-panel="text">
+                <div class="space-y-4">
+                  <div>
+                    <label class="text-xs text-slate-500">会议标题</label>
+                    <input id="nmTitle" type="text" class="field mt-1" placeholder="例如：产品需求评审会" />
+                  </div>
+                  <div>
+                    <label class="text-xs text-slate-500">会议文本</label>
+                    <textarea id="nmText" rows="16" class="field mt-1" placeholder="粘贴会议转写文本，支持中文 / 英文，自动识别说话人并分段…"></textarea>
+                  </div>
+                  <p class="text-[11px] text-slate-400">文本没有声纹信息，说话人分段由 LLM 判断；可在右侧「术语表」里导入术语提升准确率。</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="jobProgress" class="hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
+              <div class="mb-5 flex items-center gap-3 rounded-xl bg-indigo-50/70 px-4 py-3 ring-1 ring-indigo-100">
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-indigo-500 shadow-sm"><i data-lucide="loader" class="size-4" aria-hidden="true"></i></span>
+                <div class="min-w-0">
+                  <p id="jobTitle" class="text-sm font-semibold text-slate-800">正在生成纪要</p>
+                  <p id="jobSub" class="mt-0.5 text-[11px] leading-5 text-slate-500">音频转写与纪要生成可能持续数分钟，请保持页面打开</p>
+                </div>
+              </div>
+              <div id="jobQueue" class="mb-4 hidden max-h-56 space-y-1.5 overflow-y-auto pr-1"></div>
+              <div class="grid gap-2 sm:grid-cols-2">
+                <div id="jp-asr" class="flex items-center gap-3 rounded-lg bg-slate-50/60 px-4 py-3 transition">
+                  <span data-jp-icon class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-400">○</span>
+                  <div><p class="text-sm text-slate-700">语音转写</p><p data-jp-detail class="text-[11px] text-slate-400">等待中…</p></div>
+                </div>
+                <div id="jp-diar" class="flex items-center gap-3 rounded-lg bg-slate-50/60 px-4 py-3 transition">
+                  <span data-jp-icon class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-400">○</span>
+                  <div><p class="text-sm text-slate-700">说话人识别</p><p data-jp-detail class="text-[11px] text-slate-400">等待中…</p></div>
+                </div>
+                <div id="jp-correct" class="flex items-center gap-3 rounded-lg bg-slate-50/60 px-4 py-3 transition">
+                  <span data-jp-icon class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-400">○</span>
+                  <div><p class="text-sm text-slate-700">同音字纠错</p><p data-jp-detail class="text-[11px] text-slate-400">等待中…</p></div>
+                </div>
+                <div id="jp-llm" class="flex items-center gap-3 rounded-lg bg-slate-50/60 px-4 py-3 transition">
+                  <span data-jp-icon class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-400">○</span>
+                  <div><p class="text-sm text-slate-700">纪要 + 翻译</p><p data-jp-detail class="text-[11px] text-slate-400">等待中…</p></div>
+                </div>
+              </div>
+              <p id="jobError" class="mt-3 hidden whitespace-pre-line rounded-lg bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-700 ring-1 ring-rose-100"></p>
+              <button id="jobCloseBtn" onclick="closeNewMeeting()" class="mt-4 hidden h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-600 transition hover:bg-slate-50">关闭</button>
+            </div>
+
+            <div id="nmFooter" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-soft">
+              <p class="text-[11px] text-slate-400">文件只在本机处理；仅调用你配置的 LLM / 讯飞接口</p>
+              <div class="ml-auto flex items-center gap-2">
+                <button onclick="closeNewMeeting()" class="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-600 transition hover:bg-slate-50">取消</button>
+                <button onclick="startGenerate()" class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-500 px-4 text-sm font-medium text-white shadow-sm shadow-indigo-500/30 transition hover:bg-indigo-600">
+                  <i data-lucide="sparkles" class="size-4" aria-hidden="true"></i>开始生成纪要
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="space-y-4">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <i data-lucide="sliders-horizontal" class="size-4 text-slate-500" aria-hidden="true"></i>本次处理
+              </h3>
+              <dl class="mt-3 space-y-2 text-xs">
+                <div class="flex items-center justify-between gap-3"><dt class="text-slate-400">大模型</dt><dd id="nmSideModel" class="min-w-0 truncate text-right text-slate-700">—</dd></div>
+                <div class="flex items-center justify-between gap-3"><dt class="text-slate-400">识别语言</dt><dd id="nmSideLang" class="min-w-0 truncate text-right text-slate-700">—</dd></div>
+                <div class="flex items-center justify-between gap-3"><dt class="text-slate-400">ASR 模型</dt><dd id="nmSideAsr" class="min-w-0 truncate text-right text-slate-700">—</dd></div>
+                <div class="flex items-center justify-between gap-3"><dt class="text-slate-400">说话人分离</dt><dd id="nmSideDiar" class="min-w-0 truncate text-right text-slate-700">—</dd></div>
+                <div class="flex items-center justify-between gap-3"><dt class="text-slate-400">术语表</dt><dd id="nmSideGlossary" class="min-w-0 truncate text-right text-slate-700">—</dd></div>
+              </dl>
+              <button onclick="switchView('settings')" class="mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-600 transition hover:bg-slate-50">
+                <i data-lucide="settings" class="size-3.5" aria-hidden="true"></i>去设置页调整
+              </button>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <i data-lucide="sparkles" class="size-4 text-indigo-500" aria-hidden="true"></i>纪要模板（Prompt）
+                <span id="nmPromptBadge" class="ml-auto hidden rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600 ring-1 ring-indigo-100">已应用</span>
+              </h3>
+              <p class="mt-1 text-[11px] leading-5 text-slate-400">告诉大模型你想要的纪要风格，或去「发现」页一键套用模板</p>
+              <textarea id="nmPrompt" oninput="syncPromptBadge()" rows="3" class="field mt-2 text-xs" placeholder="例如：按周会模板输出，按人汇总本周完成、下周计划与风险"></textarea>
+              <button onclick="clearMeetingPrompt()" class="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-600 transition hover:bg-slate-50">
+                <i data-lucide="eraser" class="size-3.5" aria-hidden="true"></i>清空模板
+              </button>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <i data-lucide="tag" class="size-4 text-amber-500" aria-hidden="true"></i>术语表
+                <span id="nmGlossCount" class="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">未导入</span>
+              </h3>
+              <p class="mt-1 text-[11px] leading-5 text-slate-400">纠正音译错误、统一专有名词写法</p>
+              <div id="nmGlossChips" class="mt-2.5 flex flex-wrap gap-1.5"></div>
+              <textarea id="nmGlossText" rows="2" class="field mt-2 text-xs" placeholder="逗号分隔，例如：Smart Meeting Government, DeepSeek, 灰度发布"></textarea>
+              <div class="mt-2 flex items-center gap-2">
+                <button onclick="pickGlossaryFile()" class="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-600 transition hover:bg-slate-50">
+                  <i data-lucide="upload" class="size-3.5" aria-hidden="true"></i>从文件导入
+                </button>
+                <button onclick="saveInlineGlossary('nmGlossText')" class="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-900 text-xs font-medium text-white transition hover:bg-slate-800">
+                  <i data-lucide="check" class="size-3.5" aria-hidden="true"></i>保存
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <i data-lucide="workflow" class="size-4 text-indigo-500" aria-hidden="true"></i>处理流程
+              </h3>
+              <ol class="mt-3 space-y-2.5 text-xs leading-5 text-slate-500">
+                <li class="flex gap-2"><span class="mt-1 size-1.5 shrink-0 rounded-full bg-indigo-400"></span><span><b class="font-medium text-slate-700">语音转写</b>：本地 faster-whisper 识别，音频不出内网</span></li>
+                <li class="flex gap-2"><span class="mt-1 size-1.5 shrink-0 rounded-full bg-emerald-400"></span><span><b class="font-medium text-slate-700">说话人识别</b>：FunASR cam++ 区分发言人</span></li>
+                <li class="flex gap-2"><span class="mt-1 size-1.5 shrink-0 rounded-full bg-amber-400"></span><span><b class="font-medium text-slate-700">同音字纠错</b>：结合术语表修正专有名词</span></li>
+                <li class="flex gap-2"><span class="mt-1 size-1.5 shrink-0 rounded-full bg-sky-400"></span><span><b class="font-medium text-slate-700">纪要 + 翻译</b>：输出议题、结论、待办与双语稿</span></li>
+              </ol>
+            </div>
+
+            <div class="rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 p-4 ring-1 ring-indigo-100">
+              <p class="flex items-center gap-1.5 text-xs font-medium text-indigo-700"><i data-lucide="lock" class="size-3.5" aria-hidden="true"></i>隐私说明</p>
+              <p class="mt-1.5 text-xs leading-5 text-indigo-900/70">转写在本地完成；调用大模型时只发送文本内容，音频文件只留档在本机 data/uploads/，不会上传，可随时删除。</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 发现 · 会议模板 ==================== -->
+    <section id="view-discover" class="hidden h-full overflow-y-auto">
+      <div class="mx-auto max-w-6xl px-6 py-6 lg:px-8">
+        <header class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-semibold tracking-tight text-slate-900">发现 · 会议模板</h1>
+              <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600 ring-1 ring-indigo-100">Prompt</span>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">选一套模板，自动填入纪要要求（Prompt），粘贴会议文本即可生成对应风格的纪要。</p>
+          </div>
+          <button onclick="switchView('home')" class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 transition hover:bg-slate-50">
+            <i data-lucide="arrow-left" class="size-4" aria-hidden="true"></i>返回首页
+          </button>
+        </header>
+        <div id="templateGrid" class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 回收站 ==================== -->
+    <section id="view-trash" class="hidden h-full overflow-y-auto">
+      <div class="mx-auto max-w-5xl px-6 py-6 lg:px-8">
+        <header class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-semibold tracking-tight text-slate-900">回收站</h1>
+              <span id="trashCountBadge" class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">0 条</span>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">删除的会议记录会保留 <span id="trashDays" class="font-medium text-slate-700">30</span> 天，到期后自动彻底删除；期间可以恢复。</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadTrash()" class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 transition hover:bg-slate-50">
+              <i data-lucide="refresh-cw" class="size-4" aria-hidden="true"></i>刷新
+            </button>
+            <button onclick="openWorkspace()" class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-sm font-medium text-white transition hover:bg-slate-800">
+              <i data-lucide="file-text" class="size-4" aria-hidden="true"></i>我的记录
+            </button>
+          </div>
+        </header>
+
+        <div id="trashList" class="mt-5 space-y-2"></div>
+        <div id="trashEmpty" class="hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-16 text-center">
+          <span class="mx-auto flex size-12 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200">
+            <i data-lucide="trash-2" class="size-5" aria-hidden="true"></i>
+          </span>
+          <p class="mt-4 text-sm font-medium text-slate-700">回收站是空的</p>
+          <p class="mt-1 text-xs text-slate-400">在「我的记录」里删除的会议会先放到这里</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 我的收藏 ==================== -->
+    <section id="view-favorites" class="hidden h-full overflow-y-auto">
+      <div class="mx-auto max-w-5xl px-6 py-6 lg:px-8">
+        <header class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-semibold tracking-tight text-slate-900">我的收藏</h1>
+              <span id="favoritesCountBadge" class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">0 条</span>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">在「我的记录」里点记录右侧的星标即可收藏，重要会议随时回看。</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadFavorites()" class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 transition hover:bg-slate-50">
+              <i data-lucide="refresh-cw" class="size-4" aria-hidden="true"></i>刷新
+            </button>
+            <button onclick="openWorkspace()" class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-sm font-medium text-white transition hover:bg-slate-800">
+              <i data-lucide="file-text" class="size-4" aria-hidden="true"></i>我的记录
+            </button>
+          </div>
+        </header>
+
+        <div id="favoritesList" class="mt-5 space-y-2"></div>
+        <div id="favoritesEmpty" class="hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-16 text-center">
+          <span class="mx-auto flex size-12 items-center justify-center rounded-full bg-white text-amber-400 shadow-sm ring-1 ring-slate-200">
+            <i data-lucide="star" class="size-5" aria-hidden="true"></i>
+          </span>
+          <p class="mt-4 text-sm font-medium text-slate-700">还没有收藏的会议</p>
+          <p class="mt-1 text-xs text-slate-400">在「我的记录」列表里点记录右侧的星标，就会收藏到这里</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 我的分享 ==================== -->
+    <section id="view-shares" class="hidden h-full overflow-y-auto">
+      <div class="mx-auto max-w-5xl px-6 py-6 lg:px-8">
+        <header class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-semibold tracking-tight text-slate-900">我的分享</h1>
+              <span id="sharesCountBadge" class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">0 条</span>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">把会议纪要生成只读链接，同事打开就能看，无需登录；随时可以停止分享。</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadShares()" class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 transition hover:bg-slate-50">
+              <i data-lucide="refresh-cw" class="size-4" aria-hidden="true"></i>刷新
+            </button>
+            <button onclick="openWorkspace()" class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-sm font-medium text-white transition hover:bg-slate-800">
+              <i data-lucide="file-text" class="size-4" aria-hidden="true"></i>我的记录
+            </button>
+          </div>
+        </header>
+
+        <div class="mt-4 flex items-start gap-2 rounded-xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500 ring-1 ring-slate-100">
+          <i data-lucide="info" class="mt-0.5 size-3.5 shrink-0 text-slate-400" aria-hidden="true"></i>
+          分享页由本机程序提供，同一局域网内的同事把链接里的 <span class="font-medium text-slate-700">127.0.0.1</span> 换成本机 IP 即可打开；停止分享后链接立即失效。
+        </div>
+
+        <div id="sharesList" class="mt-4 space-y-2"></div>
+        <div id="sharesEmpty" class="hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-16 text-center">
+          <span class="mx-auto flex size-12 items-center justify-center rounded-full bg-white text-indigo-400 shadow-sm ring-1 ring-slate-200">
+            <i data-lucide="share-2" class="size-5" aria-hidden="true"></i>
+          </span>
+          <p class="mt-4 text-sm font-medium text-slate-700">还没有分享的会议</p>
+          <p class="mt-1 text-xs text-slate-400">打开一条会议记录，点右上角「分享」即可生成只读链接</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 translate-y-2 items-center gap-2 rounded-full bg-slate-900/95 px-4 py-2.5 text-sm text-white opacity-0 shadow-xl transition-all duration-200">
+  <span class="size-1.5 rounded-full bg-emerald-400"></span>
+  <span id="toastMsg">提示</span>
+</div>
+
+<!-- 术语表导入(所有功能页共用) -->
+<input id="glossaryFile" type="file" accept=".txt,.csv,text/plain,text/csv" class="hidden" />
+
+<script src="https://unpkg.com/lucide@1.70.0/dist/umd/lucide.min.js"></script>
+<script>
+  /* ==================== 基础工具 ==================== */
+  const VIEWS = ['home', 'workspace', 'live', 'settings', 'new', 'discover', 'favorites', 'shares', 'trash'];
+
+  const App = {
+    meta: null,
+    runs: [],
+    current: null,
+    currentId: '',
+    currentMeta: null,
+    qa: [],
+    qaHistory: [],
+    job: null,
+    jobTimer: null,
+    jobRunning: false,
+    batch: null,
+    uploadFiles: [],
+    dropActive: false,
+    glossary: '',
+    selectMode: false,
+    selected: {},
+    trash: [],
+    trashDays: 30,
+    favorites: [],
+    shares: [],
+    settings: {},
+    live: null,
+    mic: { recorder: null, chunks: [], stream: null, blob: null, timer: null, seconds: 0 }
+  };
+
+  const SPEAKER_STYLES = [
+    { chip: 'bg-indigo-100 text-indigo-600', bar: 'bg-indigo-400' },
+    { chip: 'bg-emerald-100 text-emerald-600', bar: 'bg-emerald-400' },
+    { chip: 'bg-amber-100 text-amber-600', bar: 'bg-amber-400' },
+    { chip: 'bg-sky-100 text-sky-600', bar: 'bg-sky-400' },
+    { chip: 'bg-rose-100 text-rose-600', bar: 'bg-rose-400' },
+    { chip: 'bg-violet-100 text-violet-600', bar: 'bg-violet-400' }
+  ];
+
+  const TOPIC_STYLES = [
+    { num: 'bg-indigo-50 text-indigo-600', note: 'bg-indigo-50/70 text-indigo-900' },
+    { num: 'bg-emerald-50 text-emerald-600', note: 'bg-emerald-50/70 text-emerald-900' },
+    { num: 'bg-amber-50 text-amber-600', note: 'bg-amber-50/70 text-amber-900' },
+    { num: 'bg-sky-50 text-sky-600', note: 'bg-sky-50/70 text-sky-900' },
+    { num: 'bg-rose-50 text-rose-600', note: 'bg-rose-50/70 text-rose-900' }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  async function api(path, options) {
+    const opts = options || {};
+    opts.headers = Object.assign({}, opts.headers || {});
+    if (opts.body && !(opts.body instanceof FormData) && typeof opts.body !== 'string') {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(opts.body);
+    }
+    const res = await fetch(path, opts);
+    if (!res.ok) {
+      let msg = res.status + ' ' + res.statusText;
+      try { const data = await res.json(); if (data.detail) msg = data.detail; } catch (e) {}
+      const err = new Error(msg);
+      err.status = res.status;
+      throw err;
+    }
+    const type = res.headers.get('content-type') || '';
+    if (type.indexOf('application/json') > -1) return res.json();
+    return res.text();
+  }
+
+  function parseDate(value) { return new Date(String(value || '').replace(' ', 'T')); }
+
+  function bucketOf(created) {
+    const d = parseDate(created);
+    if (isNaN(d.getTime())) return '更早';
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diff = Math.round((today - day) / 86400000);
+    if (diff <= 0) return '今天';
+    if (diff === 1) return '昨天';
+    return '更早';
+  }
+
+  function clockOf(created) {
+    const d = parseDate(created);
+    return isNaN(d.getTime()) ? '' : pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function dateShort(created) {
+    const d = parseDate(created);
+    return isNaN(d.getTime()) ? '' : pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function fmtDuration(sec) {
+    if (sec == null || isNaN(Number(sec))) return '—';
+    const total = Math.round(Number(sec));
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    return h > 0 ? h + ':' + pad(m) + ':' + pad(s) : pad(m) + ':' + pad(s);
+  }
+
+  function fmtClock(sec) {
+    const total = Math.max(0, Math.round(Number(sec) || 0));
+    return pad(Math.floor(total / 60)) + ':' + pad(total % 60);
+  }
+
+  function fmtDurationCn(sec) {
+    const total = Math.round(Number(sec) || 0);
+    return Math.floor(total / 60) + '分' + pad(total % 60) + '秒';
+  }
+
+  /* ==================== 轻量 Markdown ==================== */
+  function mdInline(text) {
+    let t = esc(text).replace(/\n/g, '<br />');
+    t = t.replace(/`([^`]+)`/g, '<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-[12px] text-indigo-700">$1</code>');
+    t = t.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold text-slate-800">$1</strong>');
+    t = t.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    return t;
+  }
+
+  function mdToHtml(md) {
+    if (!md) return '';
+    const lines = String(md).replace(/\r/g, '').split('\n');
+    let html = '';
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) { i++; continue; }
+
+      if (line.indexOf('```') === 0) {
+        let j = i + 1;
+        const buf = [];
+        while (j < lines.length && lines[j].indexOf('```') !== 0) { buf.push(lines[j]); j++; }
+        html += '<pre class="my-2 overflow-x-auto rounded-lg bg-slate-900 px-3 py-2 text-[12px] leading-5 text-slate-100">' + esc(buf.join('\n')) + '</pre>';
+        i = j + 1;
+        continue;
+      }
+
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        const rows = [];
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(lines[i]); i++; }
+        if (rows.length >= 2 && /^[\s|:\-]+$/.test(rows[1])) {
+          html += '<div class="my-2 overflow-x-auto rounded-lg ring-1 ring-slate-200"><table class="w-full text-left text-[13px]"><thead class="bg-slate-50 text-slate-500"><tr>';
+          rows[0].split('|').slice(1, -1).forEach(function (c) {
+            html += '<th class="px-3 py-2 font-medium">' + mdInline(c.trim()) + '</th>';
+          });
+          html += '</tr></thead><tbody class="divide-y divide-slate-100">';
+          rows.slice(2).forEach(function (r) {
+            html += '<tr>';
+            r.split('|').slice(1, -1).forEach(function (c) {
+              html += '<td class="px-3 py-2 align-top text-slate-700">' + mdInline(c.trim()) + '</td>';
+            });
+            html += '</tr>';
+          });
+          html += '</tbody></table></div>';
+        } else {
+          html += '<p class="my-1 text-[13px] leading-6 text-slate-700">' + mdInline(rows.join(' ')) + '</p>';
+        }
+        continue;
+      }
+
+      const heading = line.match(/^(#{1,4})\s+(.*)$/);
+      if (heading) {
+        const size = ['text-lg', 'text-base', 'text-sm', 'text-sm'][heading[1].length - 1] || 'text-sm';
+        html += '<p class="mb-1 mt-3 font-semibold text-slate-800 ' + size + '">' + mdInline(heading[2]) + '</p>';
+        i++;
+        continue;
+      }
+
+      if (/^\s*[-*]\s+/.test(line)) {
+        html += '<ul class="my-1 list-disc space-y-1 pl-5 text-[13px] leading-6 text-slate-700">';
+        while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
+          html += '<li>' + mdInline(lines[i].replace(/^\s*[-*]\s+/, '')) + '</li>';
+          i++;
+        }
+        html += '</ul>';
+        continue;
+      }
+
+      if (/^\s*\d+[.)]\s+/.test(line)) {
+        html += '<ol class="my-1 list-decimal space-y-1 pl-5 text-[13px] leading-6 text-slate-700">';
+        while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) {
+          html += '<li>' + mdInline(lines[i].replace(/^\s*\d+[.)]\s+/, '')) + '</li>';
+          i++;
+        }
+        html += '</ol>';
+        continue;
+      }
+
+      if (line.indexOf('>') === 0) {
+        html += '<blockquote class="my-2 border-l-2 border-indigo-200 bg-indigo-50/50 px-3 py-1.5 text-[13px] leading-6 text-slate-600">' + mdInline(line.replace(/^>\s?/, '')) + '</blockquote>';
+        i++;
+        continue;
+      }
+
+      const para = [line];
+      i++;
+      while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|[-*]\s|\d+[.)]\s|>|\|)/.test(lines[i]) && lines[i].indexOf('```') !== 0) {
+        para.push(lines[i]);
+        i++;
+      }
+      html += '<p class="my-1 text-[13px] leading-6 text-slate-700">' + mdInline(para.join('\n')) + '</p>';
+    }
+    return html;
+  }
+
+  /* ==================== 视图切换 ==================== */
+  function switchView(name) {
+    VIEWS.forEach(function (v) {
+      const el = $('view-' + v);
+      if (el) el.classList.toggle('hidden', v !== name);
+    });
+    document.querySelectorAll('[data-nav]').forEach(function (btn) {
+      const active = btn.dataset.nav === name;
+      btn.classList.toggle('is-active', active);
+      if (active) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
+    });
+    const sec = $('view-' + name);
+    if (sec) sec.scrollTop = 0;
+  }
+
+  function demoAction(name) {
+    toast(name + '：该入口暂未接入');
+  }
+
+  function openWorkspace() {
+    switchView('workspace');
+    if (App.current) {
+      $('meetingDetail').classList.remove('hidden');
+      $('meetingEmpty').classList.add('hidden');
+    } else if (App.runs.length) {
+      openRun(App.runs[0].id);
+    } else {
+      showEmptyWorkspace();
+    }
+  }
+
+  /* ==================== 会议列表 ==================== */
+  function renderRuns() {
+    const wrap = $('recordListInner');
+    if (!wrap) return;
+    const groups = { '今天': [], '昨天': [], '更早': [] };
+    App.runs.forEach(function (r) { groups[bucketOf(r.created_at)].push(r); });
+
+    let html = '';
+    Object.keys(groups).forEach(function (label) {
+      const items = groups[label];
+      if (!items.length) return;
+      html += '<div class="record-group"><p class="px-2 pb-1 pt-2 text-[11px] font-medium tracking-wider text-slate-400">' + label + '</p>';
+      items.forEach(function (r) {
+        html += recordHtml(r, r.id === App.currentId);
+      });
+      html += '</div>';
+    });
+
+    if (!App.runs.length) {
+      html = '<div class="px-2 py-8 text-center text-xs leading-6 text-slate-400">还没有会议记录<br /><button onclick="openNewMeeting(\'upload\')" class="mt-2 text-indigo-600 hover:text-indigo-700">新建会议</button></div>';
+    }
+    wrap.innerHTML = html;
+    if (App.selectMode) {
+      const alive = {};
+      App.runs.forEach(function (r) { if (App.selected[r.id]) alive[r.id] = true; });
+      App.selected = alive;
+    } else {
+      App.selected = {};
+    }
+    updateBatchBar();
+    const storage = $('storageText');
+    if (storage) storage.textContent = App.runs.length + ' 条记录';
+    const bar = $('storageBar');
+    if (bar) bar.style.width = Math.min(100, App.runs.length * 4) + '%';
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function recordHtml(r, active) {
+    const title = r.title || r.source_name || '未命名会议';
+    const sub = ([r.duration ? fmtDuration(r.duration) : '', r.n_speakers ? r.n_speakers + ' 位发言人' : '']
+      .filter(Boolean).join(' · ') || '无转写信息') + (r.share_token ? ' · 已分享' : '');
+    const bucket = bucketOf(r.created_at);
+    const right = bucket === '今天' ? clockOf(r.created_at) : (bucket === '昨天' ? '昨天' : dateShort(r.created_at));
+    const selectable = !!App.selectMode;
+    const checked = selectable && !!App.selected[r.id];
+    const check = selectable ? '<span class="record-check" aria-hidden="true"></span>' : '';
+    const fav = !!r.is_favorite;
+    const star = '<button type="button" onclick="toggleFavorite(\'' + esc(r.id) + '\', ' + (fav ? 'false' : 'true') + ')" class="record-star mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md transition ' + (fav ? 'text-amber-500 hover:bg-amber-50' : 'text-slate-300 hover:bg-slate-100 hover:text-amber-500') + '" aria-label="' + (fav ? '取消收藏' : '收藏') + '" title="' + (fav ? '取消收藏' : '收藏') + '">' +
+      '<i data-lucide="star" class="size-3.5' + (fav ? ' fill-amber-400' : '') + '" aria-hidden="true"></i></button>';
+    return '<div data-id="' + esc(r.id) + '" data-title="' + esc(title) + '" class="record' + (active ? ' is-active' : '') + (checked ? ' is-selected' : '') + ' mt-1 flex w-full items-start gap-1 rounded-lg px-2.5 py-2">' +
+      '<button type="button" onclick="onRecordClick(\'' + esc(r.id) + '\', this.parentElement)" class="flex min-w-0 flex-1 flex-col gap-1 text-left">' +
+        '<span class="flex w-full items-center gap-2">' +
+          check +
+          '<span class="record-icon flex size-6 shrink-0 items-center justify-center rounded-md ' + (active ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-100 text-slate-500') + '"><i data-lucide="file-text" class="size-3.5"></i></span>' +
+          '<span class="record-title truncate text-sm font-medium text-slate-800">' + esc(title) + '</span>' +
+          '<span class="ml-auto shrink-0 text-[10px] text-slate-400">' + esc(right) + '</span>' +
+        '</span>' +
+        '<span class="pl-8 text-[11px] text-slate-500">' + esc(sub) + '</span>' +
+      '</button>' + star +
+    '</div>';
+  }
+
+  function filterRecords(q) {
+    const kw = String(q || '').trim().toLowerCase();
+    let anyVisible = false;
+    document.querySelectorAll('#recordListInner .record').forEach(function (r) {
+      const hit = !kw || String(r.dataset.title || '').toLowerCase().indexOf(kw) > -1;
+      r.classList.toggle('hidden', !hit);
+      if (hit) anyVisible = true;
+    });
+    document.querySelectorAll('#recordListInner .record-group').forEach(function (g) {
+      const visible = Array.prototype.some.call(g.querySelectorAll('.record'), function (r) {
+        return !r.classList.contains('hidden');
+      });
+      g.classList.toggle('hidden', !visible);
+    });
+    $('recordEmpty').classList.toggle('hidden', anyVisible || !App.runs.length);
+  }
+
+  function showEmptyWorkspace() {
+    $('meetingDetail').classList.add('hidden');
+    $('meetingEmpty').classList.remove('hidden');
+    $('wsStatus').classList.add('hidden');
+    const delBtn = $('wsDelete');
+    if (delBtn) delBtn.classList.add('hidden');
+    const favBtn = $('wsFavorite');
+    if (favBtn) favBtn.classList.add('hidden');
+    const shareBtn = $('wsShare');
+    if (shareBtn) shareBtn.classList.add('hidden');
+    const title = $('meetingEmptyTitle');
+    if (title) title.textContent = App.runs.length ? '请选择一条记录' : '还没有会议记录';
+    const tip = $('meetingEmptyTip');
+    if (tip) {
+      tip.textContent = App.runs.length
+        ? '从左侧选择一条会议记录查看纪要、双语对照、问答与导出。'
+        : '上传音频或粘贴文本，生成第一份结构化纪要。';
+    }
+    $('wsTitle').textContent = '我的记录';
+    $('wsDuration').textContent = '—';
+    $('wsSpeakers').textContent = '—';
+    $('wsLang').textContent = '—';
+  }
+
+  async function openRun(id, el) {
+    switchView('workspace');
+    if (el) {
+      document.querySelectorAll('#recordListInner .record').forEach(function (r) { r.classList.remove('is-active'); });
+      el.classList.add('is-active');
+    } else {
+      renderRuns();
+    }
+    try {
+      const data = await api('/api/runs/' + encodeURIComponent(id));
+      App.current = data.result;
+      App.currentId = id;
+      App.currentMeta = data.meta;
+      App.qa = [];
+      App.qaHistory = [];
+      renderWorkspace(data.result, data.meta);
+      $('meetingDetail').classList.remove('hidden');
+      $('meetingEmpty').classList.add('hidden');
+      switchTab('summary');
+      $('wsScroll').scrollTop = 0;
+      renderRuns();
+    } catch (err) {
+      toast('打开记录失败：' + err.message);
+    }
+  }
+
+  async function deleteCurrentRun() {
+    if (!App.currentId) return;
+    if (!confirm('删除这条会议记录？会先移入回收站，保留 30 天，期间可恢复。')) return;
+    try {
+      await api('/api/runs/' + encodeURIComponent(App.currentId), { method: 'DELETE' });
+      App.current = null;
+      App.currentId = '';
+      App.currentMeta = null;
+      await refreshRuns();
+      if (App.runs.length) openRun(App.runs[0].id);
+      else showEmptyWorkspace();
+      toast('已移入回收站，可在「回收站」恢复');
+    } catch (err) {
+      toast('删除失败：' + err.message);
+    }
+  }
+
+  /* ==================== 批量删除 ==================== */
+  function onRecordClick(id, el) {
+    if (App.selectMode) {
+      toggleSelectRun(id);
+      return;
+    }
+    openRun(id, el);
+  }
+
+  function selectedIdList() {
+    return Object.keys(App.selected || {}).filter(function (id) { return !!App.selected[id]; });
+  }
+
+  function updateBatchBar() {
+    const ids = selectedIdList();
+    const count = $('batchCount');
+    if (count) count.textContent = ids.length ? '已选 ' + ids.length + ' 条' : '已选 0 条';
+    const delBtn = $('batchDeleteBtn');
+    if (delBtn) {
+      delBtn.disabled = !ids.length;
+      delBtn.textContent = ids.length ? '删除 ' + ids.length + ' 条' : '删除';
+    }
+    const all = $('batchAll');
+    if (all) {
+      const visible = Array.prototype.slice.call(document.querySelectorAll('#recordListInner .record:not(.hidden)'));
+      const chosen = visible.filter(function (el) { return !!App.selected[el.dataset.id]; }).length;
+      all.checked = visible.length > 0 && chosen === visible.length;
+      all.indeterminate = chosen > 0 && chosen < visible.length;
+    }
+  }
+
+  function toggleSelectMode(force) {
+    const on = typeof force === 'boolean' ? force : !App.selectMode;
+    if (on === App.selectMode) return;
+    App.selectMode = on;
+    App.selected = {};
+    const bar = $('batchBar');
+    if (bar) bar.classList.toggle('hidden', !on);
+    const label = $('selectModeText');
+    if (label) label.textContent = on ? '退出批量' : '批量管理';
+    const btn = $('selectModeBtn');
+    if (btn) btn.classList.toggle('text-indigo-600', on);
+    renderRuns();
+    if (on) toast('勾选要删除的记录，再点底部「删除」');
+  }
+
+  function cancelSelectMode() {
+    toggleSelectMode(false);
+  }
+
+  function toggleSelectRun(id) {
+    if (!id) return;
+    if (App.selected[id]) delete App.selected[id];
+    else App.selected[id] = true;
+    const safe = String(id).replace(/["\\]/g, '');
+    const el = document.querySelector('#recordListInner .record[data-id="' + safe + '"]');
+    if (el) el.classList.toggle('is-selected', !!App.selected[id]);
+    updateBatchBar();
+  }
+
+  function toggleSelectAll(checked) {
+    document.querySelectorAll('#recordListInner .record').forEach(function (el) {
+      if (el.classList.contains('hidden')) return;
+      const id = el.dataset.id;
+      if (!id) return;
+      if (checked) App.selected[id] = true;
+      else delete App.selected[id];
+      el.classList.toggle('is-selected', !!checked);
+    });
+    updateBatchBar();
+  }
+
+  async function deleteSelectedRuns() {
+    const ids = selectedIdList();
+    if (!ids.length) { toast('请先勾选要删除的记录'); return; }
+    if (!confirm('将选中的 ' + ids.length + ' 条会议记录移入回收站？可在回收站恢复，30 天后自动彻底删除。')) return;
+    const delBtn = $('batchDeleteBtn');
+    if (delBtn) { delBtn.disabled = true; delBtn.textContent = '删除中…'; }
+    const failed = [];
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        await api('/api/runs/' + encodeURIComponent(ids[i]), { method: 'DELETE' });
+        delete App.selected[ids[i]];
+      } catch (err) {
+        failed.push(ids[i]);
+      }
+    }
+    const deletedCurrent = ids.indexOf(App.currentId) > -1 && failed.indexOf(App.currentId) === -1;
+    await refreshRuns();
+    if (deletedCurrent) {
+      App.current = null;
+      App.currentId = '';
+      App.currentMeta = null;
+      App.qa = [];
+      App.qaHistory = [];
+      if (App.runs.length) openRun(App.runs[0].id);
+      else showEmptyWorkspace();
+    }
+    if (failed.length) {
+      failed.forEach(function (id) { App.selected[id] = true; });
+      renderRuns();
+      toast('已移入回收站 ' + (ids.length - failed.length) + ' 条，' + failed.length + ' 条失败，可重试');
+      return;
+    }
+    toggleSelectMode(false);
+    toast('已将 ' + ids.length + ' 条记录移入回收站');
+  }
+
+  /* ==================== 回收站 ==================== */
+  function openTrash() {
+    switchView('trash');
+    loadTrash();
+  }
+
+  async function loadTrash() {
+    const list = $('trashList');
+    if (list && !App.trash.length) {
+      list.innerHTML = '<p class="py-10 text-center text-sm text-slate-400">正在读取回收站…</p>';
+    }
+    try {
+      const data = await api('/api/runs/trash');
+      App.trash = data.runs || [];
+      App.trashDays = data.retention_days || 30;
+      renderTrash();
+    } catch (err) {
+      // 404 说明后台还是旧版本(没有 /api/runs/trash 接口),给一句能直接照做的提示
+      if (err && err.status === 404) {
+        const empty = $('trashEmpty');
+        if (empty) empty.classList.add('hidden');
+        if (list) list.innerHTML = '<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-700">' +
+          '后台程序还是旧版本，没有回收站接口。<br>请关闭启动程序的黑色窗口，重新双击 <b>start_web.bat</b> 后再打开回收站。</div>';
+        toast('读取回收站失败：后台程序是旧版本，请重启程序');
+        return;
+      }
+      toast('读取回收站失败：' + err.message);
+    }
+  }
+
+  function trashDaysLeft(deletedAt) {
+    const t = Date.parse(String(deletedAt || '').replace(' ', 'T'));
+    if (!t) return null;
+    const days = Math.ceil((App.trashDays || 30) - (Date.now() - t) / 86400000);
+    return Math.max(0, days);
+  }
+
+  function renderTrash() {
+    const list = $('trashList');
+    const empty = $('trashEmpty');
+    const badge = $('trashCountBadge');
+    const days = $('trashDays');
+    if (!list) return;
+    if (days) days.textContent = String(App.trashDays || 30);
+    if (badge) badge.textContent = App.trash.length + ' 条';
+    if (empty) empty.classList.toggle('hidden', App.trash.length > 0);
+
+    list.innerHTML = App.trash.map(function (r) {
+      const title = r.title || r.source_name || '未命名会议';
+      const left = trashDaysLeft(r.deleted_at);
+      const when = r.deleted_at || '—';
+      const sub = '删除于 ' + when + (left === null ? '' : ' · 还剩 ' + left + ' 天彻底删除');
+      return '<div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">' +
+        '<span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><i data-lucide="file-text" class="size-4" aria-hidden="true"></i></span>' +
+        '<div class="min-w-0 flex-1">' +
+          '<p class="truncate text-sm font-medium text-slate-800">' + esc(title) + '</p>' +
+          '<p class="mt-0.5 text-[11px] text-slate-400">' + esc(sub) + '</p>' +
+        '</div>' +
+        '<div class="flex shrink-0 items-center gap-2">' +
+          '<button onclick="restoreTrashRun(\'' + esc(r.id) + '\')" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600">' +
+            '<i data-lucide="undo-2" class="size-3.5" aria-hidden="true"></i>恢复</button>' +
+          '<button onclick="purgeTrashRun(\'' + esc(r.id) + '\')" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600">' +
+            '<i data-lucide="trash-2" class="size-3.5" aria-hidden="true"></i>彻底删除</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  async function restoreTrashRun(id) {
+    try {
+      await api('/api/runs/' + encodeURIComponent(id) + '/restore', { method: 'POST' });
+      App.trash = App.trash.filter(function (r) { return r.id !== id; });
+      renderTrash();
+      await refreshRuns();
+      toast('已恢复，可在「我的记录」查看');
+    } catch (err) {
+      toast('恢复失败：' + err.message);
+    }
+  }
+
+  async function purgeTrashRun(id) {
+    const item = App.trash.filter(function (r) { return r.id === id; })[0];
+    const title = (item && (item.title || item.source_name)) || '这条记录';
+    if (!confirm('彻底删除「' + title + '」？删除后无法恢复。')) return;
+    try {
+      await api('/api/runs/' + encodeURIComponent(id) + '/purge', { method: 'DELETE' });
+      App.trash = App.trash.filter(function (r) { return r.id !== id; });
+      renderTrash();
+      toast('已彻底删除');
+    } catch (err) {
+      toast('彻底删除失败：' + err.message);
+    }
+  }
+
+  /* ==================== 我的收藏 ==================== */
+  function openFavorites() {
+    switchView('favorites');
+    loadFavorites();
+  }
+
+  async function loadFavorites() {
+    const list = $('favoritesList');
+    if (list && !App.favorites.length) {
+      list.innerHTML = '<p class="py-10 text-center text-sm text-slate-400">正在读取收藏…</p>';
+    }
+    try {
+      const data = await api('/api/runs/favorites');
+      App.favorites = data.runs || [];
+      renderFavorites();
+    } catch (err) {
+      // 404 说明后台还是旧版本(没有 /api/runs/favorites 接口)
+      if (err && err.status === 404) {
+        const empty = $('favoritesEmpty');
+        if (empty) empty.classList.add('hidden');
+        if (list) list.innerHTML = '<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-700">' +
+          '后台程序还是旧版本，没有收藏接口。<br>请关闭启动程序的黑色窗口，重新双击 <b>start_web.bat</b> 后再打开。</div>';
+        toast('读取收藏失败：后台程序是旧版本，请重启程序');
+        return;
+      }
+      toast('读取收藏失败：' + err.message);
+    }
+  }
+
+  function renderFavorites() {
+    const list = $('favoritesList');
+    const empty = $('favoritesEmpty');
+    const badge = $('favoritesCountBadge');
+    if (!list) return;
+    if (badge) badge.textContent = App.favorites.length + ' 条';
+    if (empty) empty.classList.toggle('hidden', App.favorites.length > 0);
+
+    list.innerHTML = App.favorites.map(function (r) {
+      const title = r.title || r.source_name || '未命名会议';
+      const when = r.favorited_at ? '收藏于 ' + r.favorited_at : ('创建于 ' + (r.created_at || '—'));
+      const sub = [r.duration ? fmtDuration(r.duration) : '', r.n_speakers ? r.n_speakers + ' 位发言人' : '']
+        .filter(Boolean).join(' · ');
+      return '<div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">' +
+        '<span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-500"><i data-lucide="star" class="size-4 fill-amber-400" aria-hidden="true"></i></span>' +
+        '<div class="min-w-0 flex-1">' +
+          '<p class="truncate text-sm font-medium text-slate-800">' + esc(title) + '</p>' +
+          '<p class="mt-0.5 text-[11px] text-slate-400">' + esc(when + (sub ? ' · ' + sub : '')) + '</p>' +
+        '</div>' +
+        '<div class="flex shrink-0 items-center gap-2">' +
+          '<button onclick="openFavoriteRun(\'' + esc(r.id) + '\')" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600">' +
+            '<i data-lucide="external-link" class="size-3.5" aria-hidden="true"></i>查看</button>' +
+          '<button onclick="toggleFavorite(\'' + esc(r.id) + '\', false)" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-600 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600">' +
+            '<i data-lucide="star" class="size-3.5" aria-hidden="true"></i>取消收藏</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function openFavoriteRun(id) {
+    openRun(id);
+  }
+
+  async function toggleFavorite(id, favorite) {
+    if (!id) return;
+    try {
+      const data = await api('/api/runs/' + encodeURIComponent(id) + '/favorite', {
+        method: 'POST',
+        body: { favorite: !!favorite }
+      });
+      const state = !!data.favorite;
+      App.runs.forEach(function (r) { if (r.id === id) r.is_favorite = state ? 1 : 0; });
+      App.favorites = (App.favorites || []).filter(function (r) { return state || r.id !== id; });
+      if (App.currentMeta && App.currentMeta.id === id) App.currentMeta.is_favorite = state ? 1 : 0;
+      renderRuns();
+      updateFavoriteButton();
+      if (!$('view-favorites').classList.contains('hidden')) renderFavorites();
+      toast(state ? '已收藏，可在「我的收藏」查看' : '已取消收藏');
+    } catch (err) {
+      toast((favorite ? '收藏' : '取消收藏') + '失败：' + err.message);
+    }
+  }
+
+  function toggleCurrentFavorite() {
+    if (!App.currentId) return;
+    const fav = !!(App.currentMeta && App.currentMeta.is_favorite);
+    toggleFavorite(App.currentId, !fav);
+  }
+
+  function updateFavoriteButton() {
+    const btn = $('wsFavorite');
+    if (!btn) return;
+    const open = !!App.currentMeta;
+    btn.classList.toggle('hidden', !open);
+    if (!open) return;
+    const fav = !!(App.currentMeta.is_favorite);
+    btn.classList.toggle('border-amber-200', fav);
+    btn.classList.toggle('bg-amber-50', fav);
+    btn.classList.toggle('text-amber-600', fav);
+    btn.classList.toggle('border-slate-200', !fav);
+    btn.classList.toggle('text-slate-600', !fav);
+    btn.title = fav ? '取消收藏' : '收藏这条记录';
+    btn.setAttribute('aria-label', btn.title);
+    btn.innerHTML = '<i data-lucide="star" class="size-3.5' + (fav ? ' fill-amber-400' : '') + '" aria-hidden="true"></i>' + (fav ? '已收藏' : '收藏');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  /* ==================== 我的分享 ==================== */
+  function openShares() {
+    switchView('shares');
+    loadShares();
+  }
+
+  async function loadShares() {
+    const list = $('sharesList');
+    if (list && !App.shares.length) {
+      list.innerHTML = '<p class="py-10 text-center text-sm text-slate-400">正在读取分享…</p>';
+    }
+    try {
+      const data = await api('/api/runs/shares');
+      App.shares = data.runs || [];
+      renderShares();
+    } catch (err) {
+      // 404 说明后台还是旧版本(没有 /api/runs/shares 接口)
+      if (err && err.status === 404) {
+        const empty = $('sharesEmpty');
+        if (empty) empty.classList.add('hidden');
+        if (list) list.innerHTML = '<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-700">' +
+          '后台程序还是旧版本，没有分享接口。<br>请关闭启动程序的黑色窗口，重新双击 <b>start_web.bat</b> 后再打开。</div>';
+        toast('读取分享失败：后台程序是旧版本，请重启程序');
+        return;
+      }
+      toast('读取分享失败：' + err.message);
+    }
+  }
+
+  function renderShares() {
+    const list = $('sharesList');
+    const empty = $('sharesEmpty');
+    const badge = $('sharesCountBadge');
+    if (!list) return;
+    if (badge) badge.textContent = App.shares.length + ' 条';
+    if (empty) empty.classList.toggle('hidden', App.shares.length > 0);
+
+    list.innerHTML = App.shares.map(function (r) {
+      const title = r.title || r.source_name || '未命名会议';
+      const sub = [
+        r.shared_at ? '分享于 ' + r.shared_at : '',
+        r.duration ? fmtDuration(r.duration) : '',
+        r.n_speakers ? r.n_speakers + ' 位发言人' : ''
+      ].filter(Boolean).join(' · ');
+      const url = r.share_url || ('/s/' + (r.share_token || ''));
+      return '<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">' +
+        '<div class="flex flex-wrap items-center gap-3">' +
+          '<span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500"><i data-lucide="share-2" class="size-4" aria-hidden="true"></i></span>' +
+          '<div class="min-w-0 flex-1">' +
+            '<p class="truncate text-sm font-medium text-slate-800">' + esc(title) + '</p>' +
+            '<p class="mt-0.5 text-[11px] text-slate-400">' + esc(sub) + '</p>' +
+          '</div>' +
+          '<div class="flex shrink-0 items-center gap-2">' +
+            '<button onclick="openShare(\'' + esc(r.id) + '\')" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600">' +
+              '<i data-lucide="external-link" class="size-3.5" aria-hidden="true"></i>打开</button>' +
+            '<button onclick="copyShare(\'' + esc(r.id) + '\')" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600">' +
+              '<i data-lucide="copy" class="size-3.5" aria-hidden="true"></i>复制链接</button>' +
+            '<button onclick="cancelShare(\'' + esc(r.id) + '\')" class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600">' +
+              '<i data-lucide="link-2-off" class="size-3.5" aria-hidden="true"></i>停止分享</button>' +
+          '</div>' +
+        '</div>' +
+        '<p class="mt-2 select-all truncate rounded-md bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-500">' + esc(url) + '</p>' +
+      '</div>';
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function shareById(id) {
+    return (App.shares || []).filter(function (r) { return r.id === id; })[0];
+  }
+
+  function openShare(id) {
+    const item = shareById(id);
+    if (!item || !item.share_url) return toast('链接不存在，请刷新后重试');
+    window.open(item.share_url, '_blank', 'noopener');
+  }
+
+  async function copyShare(id) {
+    const item = shareById(id);
+    if (!item || !item.share_url) return toast('链接不存在，请刷新后重试');
+    const ok = await copyToClipboard(item.share_url);
+    toast(ok ? '分享链接已复制' : '复制失败，请手动选中链接复制');
+  }
+
+  async function cancelShare(id) {
+    const item = shareById(id);
+    const title = (item && (item.title || item.source_name)) || '这条记录';
+    if (!confirm('停止分享「' + title + '」？原链接会立即失效。')) return;
+    try {
+      await api('/api/runs/' + encodeURIComponent(id) + '/share', { method: 'POST', body: { shared: false } });
+      App.shares = App.shares.filter(function (r) { return r.id !== id; });
+      App.runs.forEach(function (r) { if (r.id === id) { r.share_token = null; r.shared_at = null; } });
+      if (App.currentMeta && App.currentMeta.id === id) { App.currentMeta.share_token = null; App.currentMeta.shared_at = null; }
+      renderShares();
+      renderRuns();
+      updateShareButton();
+      toast('已停止分享，链接已失效');
+    } catch (err) {
+      toast('停止分享失败：' + err.message);
+    }
+  }
+
+  async function shareCurrentRun() {
+    if (!App.currentId) return;
+    try {
+      const data = await api('/api/runs/' + encodeURIComponent(App.currentId) + '/share', {
+        method: 'POST',
+        body: { shared: true }
+      });
+      App.runs.forEach(function (r) { if (r.id === App.currentId) r.share_token = data.token; });
+      if (App.currentMeta && App.currentMeta.id === App.currentId) App.currentMeta.share_token = data.token;
+      updateShareButton();
+      renderRuns();
+      const ok = await copyToClipboard(data.url);
+      toast(ok ? '分享链接已复制，可在「我的分享」管理' : '分享链接已生成，请到「我的分享」复制');
+    } catch (err) {
+      toast('分享失败：' + err.message);
+    }
+  }
+
+  function updateShareButton() {
+    const btn = $('wsShare');
+    if (!btn) return;
+    const open = !!App.currentMeta;
+    btn.classList.toggle('hidden', !open);
+    if (!open) return;
+    const shared = !!App.currentMeta.share_token;
+    btn.classList.toggle('border-indigo-200', shared);
+    btn.classList.toggle('bg-indigo-50', shared);
+    btn.classList.toggle('text-indigo-600', shared);
+    btn.classList.toggle('border-slate-200', !shared);
+    btn.classList.toggle('text-slate-600', !shared);
+    btn.title = shared ? '已生成分享链接，点击复制' : '生成只读分享链接';
+    btn.setAttribute('aria-label', btn.title);
+    btn.innerHTML = '<i data-lucide="share-2" class="size-3.5" aria-hidden="true"></i>' + (shared ? '已分享' : '分享');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (e) { /* 权限被拒时走下面的兜底 */ }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /* ==================== 工作区渲染 ==================== */
+  function speakerStats(segments) {
+    const map = {};
+    const order = [];
+    segments.forEach(function (seg) {
+      const name = seg.speaker || '';
+      if (!name) return;
+      if (!map[name]) {
+        map[name] = { speaker: name, duration: 0, segments: 0 };
+        order.push(name);
+      }
+      map[name].duration += Math.max(0, (Number(seg.end) || 0) - (Number(seg.start) || 0));
+      map[name].segments += 1;
+    });
+    return order.map(function (name) { return map[name]; });
+  }
+
+  function langLabel(code) {
+    if (!App.meta) return code || '';
+    const hit = (App.meta.langs || []).filter(function (l) { return l.code === code; })[0];
+    return hit ? hit.label : (code || '');
+  }
+
+  function renderWorkspace(result, meta) {
+    const summary = result.summary || {};
+    const segments = result.corrected_segments || [];
+    const sourceSegments = result.source_segments || [];
+    const stats = speakerStats(segments);
+    const nSpeakers = stats.length || new Set(segments.map(function (s) { return s.speaker; }).filter(Boolean)).size;
+
+    $('wsTitle').textContent = summary.title || result.source || '未命名会议';
+    $('wsDuration').textContent = result.duration ? fmtDuration(result.duration) : '—';
+    $('wsSpeakers').textContent = nSpeakers ? nSpeakers + ' 位发言人' : '未识别';
+    $('wsLang').textContent = result.translated_lang ? '原文 → ' + result.translated_lang : '自动识别';
+    const status = $('wsStatus');
+    if (status) {
+      status.textContent = result.fallback_local ? '本机模型' : '已完成';
+      status.classList.remove('hidden');
+    }
+    const delBtn = $('wsDelete');
+    if (delBtn) delBtn.classList.remove('hidden');
+    updateShareButton();
+    updateFavoriteButton();
+
+    $('wsStatSpeakers').textContent = nSpeakers || '—';
+    $('wsStatSegments').textContent = sourceSegments.length || segments.length || 0;
+    $('wsStatTopics').textContent = (summary.topics || []).length;
+    $('wsStatActions').textContent = (summary.action_items || []).length;
+
+    renderSummary(result, summary, stats, meta);
+    renderTranscript(result);
+    renderRaw(result);
+    renderTranslation(result);
+    renderExport(result);
+    renderQa(result);
+  }
+
+  function renderSummary(result, summary, stats, meta) {
+    let html = '';
+    if (result.brief) {
+      html += '<div class="rounded-2xl bg-gradient-to-br from-indigo-50 via-violet-50/70 to-white p-5 ring-1 ring-indigo-100">' +
+        '<div class="flex items-center gap-2 text-xs font-medium text-indigo-600"><i data-lucide="sparkles" class="size-3.5" aria-hidden="true"></i>精简总结</div>' +
+        '<p class="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">' + esc(result.brief) + '</p>' +
+      '</div>';
+    }
+
+    html += '<div class="rounded-2xl border border-slate-200 bg-white p-5">' +
+      '<div class="flex flex-wrap items-center gap-2">' +
+        '<h2 class="text-lg font-semibold tracking-tight text-slate-900">' + esc(summary.title || result.source || '会议纪要') + '</h2>' +
+        '<span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600 ring-1 ring-indigo-100">AI 生成</span>' +
+      '</div>';
+    if (summary.summary) {
+      html += '<p class="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-600">' + esc(summary.summary) + '</p>';
+    }
+    if (stats.length) {
+      const maxDuration = Math.max.apply(null, stats.map(function (s) { return s.duration; }).concat([1]));
+      html += '<div class="mt-4 border-t border-slate-100 pt-4">' +
+        '<div class="mb-3 flex items-center gap-2 text-xs font-medium text-slate-500"><i data-lucide="users" class="size-3.5" aria-hidden="true"></i>讲话人概览</div>' +
+        '<div class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">';
+      stats.forEach(function (item, idx) {
+        const style = SPEAKER_STYLES[idx % SPEAKER_STYLES.length];
+        const width = Math.max(8, Math.round(item.duration / maxDuration * 100));
+        const detail = result.has_timestamps
+          ? fmtDurationCn(item.duration) + ' · ' + item.segments + ' 句'
+          : item.segments + ' 句';
+        html += '<div class="rounded-xl bg-slate-50/80 p-3 ring-1 ring-slate-100">' +
+          '<div class="flex items-center gap-2">' +
+            '<span class="flex size-7 items-center justify-center rounded-full ' + style.chip + ' text-[11px] font-semibold">' + esc(item.speaker.slice(0, 1)) + '</span>' +
+            '<div class="min-w-0"><p class="truncate text-xs font-medium text-slate-800">' + esc(item.speaker) + '</p>' +
+            '<p class="text-[10px] text-slate-400">发言 ' + item.segments + ' 段</p></div>' +
+          '</div>' +
+          '<p class="mt-2 font-mono text-[11px] text-slate-500">' + esc(detail) + '</p>' +
+          '<div class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200"><div class="h-full ' + style.bar + ' rounded-full" style="width:' + width + '%"></div></div>' +
+        '</div>';
+      });
+      html += '</div></div>';
+    }
+    html += '</div>';
+
+    const topics = summary.topics || [];
+    if (topics.length) {
+      html += '<div><h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800"><i data-lucide="folder" class="size-4 text-indigo-500" aria-hidden="true"></i>议题与结论</h3><div class="space-y-2.5">';
+      topics.forEach(function (topic, idx) {
+        const style = TOPIC_STYLES[idx % TOPIC_STYLES.length];
+        html += '<details class="group rounded-xl border border-slate-200 bg-white"' + (idx === 0 ? ' open' : '') + '>' +
+          '<summary class="flex items-center gap-3 px-4 py-3">' +
+            '<span class="flex size-6 shrink-0 items-center justify-center rounded-md ' + style.num + ' text-xs font-semibold">' + pad(idx + 1) + '</span>' +
+            '<span class="flex-1 text-sm font-medium text-slate-800">' + esc(topic.title || '未命名议题') + '</span>' +
+            '<i data-lucide="chevron-right" class="chev size-4 shrink-0 text-slate-400 transition" aria-hidden="true"></i>' +
+          '</summary>' +
+          '<div class="border-t border-slate-100 px-4 py-3 pl-[52px]">';
+        const points = topic.points || [];
+        if (points.length) {
+          html += '<ul class="list-disc space-y-1.5 pl-4 text-sm leading-6 text-slate-600 marker:text-slate-300">';
+          points.forEach(function (p) { html += '<li>' + esc(p) + '</li>'; });
+          html += '</ul>';
+        }
+        if (topic.conclusion) {
+          html += '<p class="mt-3 rounded-lg ' + style.note + ' px-3 py-2 text-sm leading-6"><span class="font-semibold">结论：</span>' + esc(topic.conclusion) + '</p>';
+        }
+        html += '</div></details>';
+      });
+      html += '</div></div>';
+    }
+
+    const actions = summary.action_items || [];
+    if (actions.length) {
+      html += '<div><h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800"><i data-lucide="list-checks" class="size-4 text-indigo-500" aria-hidden="true"></i>待办事项</h3>' +
+        '<div class="overflow-x-auto rounded-xl border border-slate-200 bg-white"><table class="w-full min-w-[520px] text-left text-sm">' +
+        '<thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-4 py-2.5 font-medium">任务</th><th class="w-24 px-4 py-2.5 font-medium">负责人</th><th class="w-20 px-4 py-2.5 font-medium">截止</th></tr></thead><tbody class="divide-y divide-slate-100">';
+      actions.forEach(function (a) {
+        html += '<tr class="transition hover:bg-slate-50/70">' +
+          '<td class="px-4 py-3"><label class="flex items-start gap-2.5"><input type="checkbox" class="mt-0.5 size-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-400" /><span class="leading-6 text-slate-700">' + esc(a.task || '') + '</span></label></td>' +
+          '<td class="px-4 py-3 text-slate-600">' + esc(a.owner || '—') + '</td>' +
+          '<td class="px-4 py-3 font-mono text-xs text-slate-500">' + esc(a.deadline || '—') + '</td>' +
+        '</tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+
+    const keywords = summary.keywords || [];
+    if (keywords.length) {
+      html += '<div><h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800"><i data-lucide="tag" class="size-4 text-indigo-500" aria-hidden="true"></i>关键词</h3><div class="flex flex-wrap gap-2">';
+      keywords.forEach(function (k) { html += '<span class="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">' + esc(k) + '</span>'; });
+      html += '</div></div>';
+    }
+
+    const created = (App.currentMeta && App.currentMeta.created_at) || '';
+    html += '<p class="pt-1 text-[11px] text-slate-400">来源：' + esc(result.source || '—') + (created ? ' · 生成于 ' + esc(created) : '') +
+      (result.fallback_local ? ' · 本机 Ollama 兜底' : '') + '</p>';
+
+    $('summaryBody').innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function renderTranscript(result) {
+    const segments = result.corrected_segments || [];
+    const hasSpeaker = segments.some(function (s) { return s.speaker; });
+    const hasTranslation = segments.some(function (s) { return s.text_translated; });
+    const showTime = !!result.has_timestamps;
+
+    let head = '<div class="mb-4 flex flex-wrap items-center justify-between gap-3">' +
+      '<p class="text-xs text-slate-500">' +
+      (hasSpeaker ? 'LLM 已做同音字与术语纠错，说话人由声纹分离得到' : 'LLM 已做同音字与术语纠错') +
+      '</p>';
+    if (hasTranslation) {
+      head += '<div class="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5">' +
+        '<button class="seg-btn is-active" data-tview="bi" onclick="setTranscriptView(\'bi\')">双语对照</button>' +
+        '<button class="seg-btn" data-tview="orig" onclick="setTranscriptView(\'orig\')">仅原文</button>' +
+      '</div>';
+    }
+    head += '</div>';
+
+    let body = '';
+    if (hasSpeaker) {
+      const indexMap = {};
+      body = '<div class="rounded-xl border border-slate-200 bg-white py-2">';
+      segments.forEach(function (seg) {
+        const name = seg.speaker || '';
+        if (!(name in indexMap)) indexMap[name] = Object.keys(indexMap).length;
+        const style = SPEAKER_STYLES[indexMap[name] % SPEAKER_STYLES.length];
+        body += '<div class="group flex gap-3 rounded-lg px-3 py-2.5 transition hover:bg-slate-50/80">' +
+          (showTime ? '<div class="w-11 shrink-0 pt-0.5 text-right font-mono text-[11px] text-slate-400">' + fmtClock(seg.start) + '</div>' : '') +
+          '<div class="flex size-7 shrink-0 items-center justify-center rounded-full ' + style.chip + ' text-[11px] font-semibold">' + esc(name.slice(0, 1)) + '</div>' +
+          '<div class="min-w-0 flex-1">' +
+            '<div class="flex items-center gap-2"><span class="text-xs font-semibold text-slate-800">' + esc(name) + '</span></div>' +
+            '<p class="mt-0.5 whitespace-pre-wrap text-sm leading-6 text-slate-700">' + esc(seg.text || '') + '</p>' +
+            (seg.text_translated ? '<p class="trans-en mt-1 text-xs leading-5 text-slate-400">' + esc(seg.text_translated) + '</p>' : '') +
+          '</div>' +
+        '</div>';
+      });
+      body += '</div>';
+    } else {
+      body = '<div class="rounded-xl border border-slate-200 bg-white p-5"><p class="whitespace-pre-wrap text-sm leading-7 text-slate-700">' +
+        esc(result.corrected_text || result.transcript || '暂无转写内容') + '</p></div>';
+    }
+
+    $('transcriptBody').innerHTML = head + body;
+    setTranscriptView(hasTranslation ? 'bi' : 'orig');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function renderRaw(result) {
+    const segments = result.source_segments || [];
+    let text = '';
+    if (segments.length) {
+      text = segments.map(function (seg) {
+        const range = '[' + fmtClock(seg.start) + ' → ' + fmtClock(seg.end) + ']';
+        return range + (seg.speaker ? ' ' + seg.speaker : '') + '\n' + (seg.text || '');
+      }).join('\n\n');
+    } else {
+      text = result.transcript || '暂无原始转写';
+    }
+    $('rawBody').innerHTML =
+      '<div class="mb-4 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 ring-1 ring-amber-100">' +
+        '<i data-lucide="zap" class="mt-0.5 size-3.5 shrink-0" aria-hidden="true"></i>' +
+        '原始转写未经 LLM 纠错，保留 ASR 原始分段与时间戳，可能与成稿存在同音字差异。' +
+      '</div>' +
+      '<div class="rounded-xl border border-slate-200 bg-slate-50/50 p-5"><pre class="whitespace-pre-wrap font-mono text-[12px] leading-6 text-slate-600">' + esc(text) + '</pre></div>' +
+      '<p class="mt-3 text-[11px] text-slate-400">共 ' + segments.length + ' 段 · 来自 faster-whisper / VAD 自动切分</p>';
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function renderTranslation(result) {
+    const preferredTarget = (App.settings && App.settings.translate_target) || 'en';
+    const options = (App.meta ? App.meta.langs : []).map(function (l) {
+      return '<option value="' + esc(l.code) + '"' + (l.code === preferredTarget ? ' selected' : '') + '>' + esc(l.label) + ' (' + esc(l.code) + ')</option>';
+    }).join('');
+
+    let initial = '<div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 px-6 py-14 text-center">' +
+      '<i data-lucide="languages" class="mx-auto size-6 text-slate-400" aria-hidden="true"></i>' +
+      '<p class="mt-3 text-sm font-medium text-slate-700">选择目标语言后开始翻译</p>' +
+      '<p class="mt-1 text-xs text-slate-400">源语言自动识别，中译外 / 外译中都可以；优先走百度翻译，未配置时回退 LLM。</p>' +
+    '</div>';
+
+    if (result.translated_summary) {
+      initial = '<div class="rounded-2xl border border-slate-200 bg-white p-6">' + mdToHtml(renderTranslatedSummaryMd(result)) + '</div>';
+    } else if (result.translated_text) {
+      initial = '<div class="rounded-2xl border border-slate-200 bg-white p-6"><pre class="whitespace-pre-wrap text-sm leading-7 text-slate-700">' + esc(result.translated_text) + '</pre></div>';
+    }
+
+    $('translationBody').innerHTML =
+      '<div class="mb-4 flex flex-wrap items-center justify-between gap-3">' +
+        '<p class="text-xs text-slate-500">译文由 LLM 结合术语表生成，专有名词保持统一写法</p>' +
+        '<div class="flex flex-wrap items-center gap-2">' +
+          '<select id="trScope" class="field w-auto"><option value="text">校对稿全文</option><option value="summary">结构化纪要</option></select>' +
+          '<select id="trTarget" class="field w-auto">' + options + '</select>' +
+          '<button onclick="translateRun()" class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-500 px-4 text-sm font-medium text-white transition hover:bg-indigo-600">' +
+            '<i data-lucide="languages" class="size-4" aria-hidden="true"></i>开始翻译</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="trResult">' + initial + '</div>' +
+      '<div class="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500 ring-1 ring-slate-100">' +
+        '💡 逐句双语对照可在「校对稿」页切换「双语对照」查看；导出的双语 Markdown 会保留原文与译文段落。' +
+      '</div>';
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function renderTranslatedSummaryMd(result) {
+    const summary = result.translated_summary || {};
+    let md = '# ' + (summary.title || 'Meeting Minutes') + '\n\n';
+    if (result.brief) md += '**精简总结：** ' + result.brief + '\n\n';
+    if (summary.summary) md += summary.summary + '\n\n';
+    (summary.topics || []).forEach(function (t) {
+      md += '## ' + (t.title || '') + '\n';
+      (t.points || []).forEach(function (p) { md += '- ' + p + '\n'; });
+      if (t.conclusion) md += '\n**结论：** ' + t.conclusion + '\n';
+      md += '\n';
+    });
+    const actions = summary.action_items || [];
+    if (actions.length) {
+      md += '## 待办事项\n';
+      actions.forEach(function (a) {
+        md += '- [ ] ' + (a.task || '') + (a.owner ? '（负责人：' + a.owner + '）' : '') + (a.deadline ? '（截止：' + a.deadline + '）' : '') + '\n';
+      });
+      md += '\n';
+    }
+    if (summary.keywords && summary.keywords.length) md += '**关键词：** ' + summary.keywords.join('、') + '\n';
+    return md;
+  }
+
+  async function translateRun() {
+    if (!App.currentId) return;
+    const target = $('trTarget').value;
+    const scope = $('trScope').value;
+    const box = $('trResult');
+    box.innerHTML = '<div class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-10 text-sm text-slate-500"><span class="typing-dot size-2 rounded-full bg-indigo-400"></span><span class="typing-dot size-2 rounded-full bg-indigo-400"></span><span class="typing-dot size-2 rounded-full bg-indigo-400"></span>翻译中，请稍候…</div>';
+    try {
+      const res = await api('/api/runs/' + encodeURIComponent(App.currentId) + '/translate', {
+        method: 'POST',
+        body: { scope: scope, target: target }
+      });
+      if (res.type === 'summary') {
+        box.innerHTML = '<div class="rounded-2xl border border-slate-200 bg-white p-6">' + mdToHtml(res.markdown) + '</div>';
+      } else {
+        box.innerHTML = '<div class="rounded-2xl border border-slate-200 bg-white p-6"><pre class="whitespace-pre-wrap text-sm leading-7 text-slate-700">' + esc(res.value) + '</pre></div>';
+      }
+      toast('翻译完成');
+    } catch (err) {
+      box.innerHTML = '<div class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-100">翻译失败：' + esc(err.message) + '</div>';
+      toast('翻译失败：' + err.message);
+    }
+  }
+
+  function renderExport(result) {
+    const hasBilingual = (result.corrected_segments || []).some(function (s) { return s.text_translated; });
+    const cards = [
+      ['md', 'file-text', 'indigo', '结构化纪要 Markdown', '议题 / 结论 / 待办，适合贴进飞书、Notion', '.md'],
+      ['srt', 'subtitles', 'emerald', '字幕文件 SRT', '保留时间戳与发言人，可直接导入剪辑软件', '.srt'],
+      ['json', 'file-json', 'sky', '完整结果 JSON', '转写、分段、说话人、双语纪要与关键词', '.json'],
+      ['bilingual', 'languages', 'amber', '双语对照 Markdown', '原文 + 译文逐段对照，适合跨语言同步', '.bilingual.md'],
+      ['txt', 'file-down', 'slate', '纯文本转写', '纯文本，不含格式，方便二次处理', '.txt']
+    ];
+    let html = '<div class="mb-4 flex items-start gap-2 rounded-lg bg-indigo-50/70 px-3 py-2 text-xs leading-5 text-indigo-700 ring-1 ring-indigo-100">' +
+      '<i data-lucide="download" class="mt-0.5 size-3.5 shrink-0" aria-hidden="true"></i>导出文件由后端 app/services/render.py 生成，与旧版 Streamlit 界面格式一致。</div>' +
+      '<div class="grid gap-3 sm:grid-cols-2">';
+    const palette = {
+      indigo: 'bg-indigo-50 text-indigo-600 hover:text-indigo-700',
+      emerald: 'bg-emerald-50 text-emerald-600 hover:text-emerald-700',
+      sky: 'bg-sky-50 text-sky-600 hover:text-sky-700',
+      amber: 'bg-amber-50 text-amber-600 hover:text-amber-700',
+      slate: 'bg-slate-100 text-slate-600 hover:text-slate-800'
+    };
+    cards.forEach(function (card) {
+      const disabled = card[0] === 'bilingual' && !hasBilingual;
+      html += '<div class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">' +
+        '<span class="flex size-9 shrink-0 items-center justify-center rounded-lg ' + palette[card[2]] + '"><i data-lucide="' + card[1] + '" class="size-4" aria-hidden="true"></i></span>' +
+        '<div class="min-w-0 flex-1">' +
+          '<p class="text-sm font-medium text-slate-800">' + card[3] + '</p>' +
+          '<p class="mt-0.5 text-xs leading-5 text-slate-500">' + card[4] + '</p>' +
+          '<button onclick="downloadRun(\'' + card[0] + '\',' + (disabled ? 'true' : 'false') + ')" class="mt-2.5 inline-flex items-center gap-1 text-xs font-medium ' + palette[card[2]] + (disabled ? ' opacity-50' : '') + '">' +
+            '<i data-lucide="download" class="size-3.5" aria-hidden="true"></i>下载 ' + card[5] + '</button>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+    $('exportBody').innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function downloadRun(fmt, disabled) {
+    if (disabled) { toast('本次会议没有逐段译文，无法导出双语对照'); return; }
+    if (!App.currentId) return;
+    window.location.href = '/api/runs/' + encodeURIComponent(App.currentId) + '/export?fmt=' + encodeURIComponent(fmt);
+  }
+
+  /* ==================== 会议问答 ==================== */
+  const QA_PRESETS = {
+    todo: '按负责人汇总所有待办事项，标出截止时间。',
+    email: '把这次会议的结论写成发给团队的中文邮件，语气正式、分点清晰。',
+    english: '用英文重新整理一份会议纪要，分议题列出结论与待办。',
+    disagree: '这场会议里有哪些分歧或不同意见？各自的理由是什么？'
+  };
+
+  function renderQa() {
+    $('qaMessages').innerHTML = '<div class="flex h-full min-h-[220px] flex-col items-center justify-center text-center">' +
+      '<span class="flex size-11 items-center justify-center rounded-full bg-indigo-50 text-indigo-500"><i data-lucide="sparkles" class="size-5"></i></span>' +
+      '<p class="mt-3 text-sm font-medium text-slate-700">就这场会议提问</p>' +
+      '<p class="mt-1 max-w-sm text-xs leading-5 text-slate-400">可以追问细节，也可以让我汇总待办、写成邮件、翻译成英文。</p>' +
+    '</div>';
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function appendMsg(role, content, isHTML) {
+    const wrap = $('qaMessages');
+    if (wrap.querySelector('.min-h-\\[220px\\]')) wrap.innerHTML = '';
+    const body = isHTML ? content : esc(content);
+    let html = '';
+    if (role === 'user') {
+      html = '<div class="rise flex justify-end gap-3">' +
+        '<div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-indigo-500 px-4 py-2.5 text-sm leading-6 text-white">' + body + '</div>' +
+        '<div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">我</div>' +
+      '</div>';
+    } else {
+      html = '<div class="rise flex gap-3">' +
+        '<div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-semibold text-white">AI</div>' +
+        '<div class="max-w-[85%] rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-2.5 text-sm leading-6 text-slate-700 ring-1 ring-slate-100">' + body + '</div>' +
+      '</div>';
+    }
+    wrap.insertAdjacentHTML('beforeend', html);
+    scrollChat();
+  }
+
+  function showTyping() {
+    const wrap = $('qaMessages');
+    if (wrap.querySelector('#qaTyping')) return;
+    wrap.insertAdjacentHTML('beforeend',
+      '<div class="rise flex gap-3" id="qaTyping">' +
+        '<div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-semibold text-white">AI</div>' +
+        '<div class="flex items-center gap-1 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">' +
+          '<span class="typing-dot size-1.5 rounded-full bg-slate-400"></span>' +
+          '<span class="typing-dot size-1.5 rounded-full bg-slate-400"></span>' +
+          '<span class="typing-dot size-1.5 rounded-full bg-slate-400"></span>' +
+        '</div>' +
+      '</div>');
+    scrollChat();
+  }
+
+  function removeTyping() {
+    const t = $('qaTyping');
+    if (t) t.remove();
+  }
+
+  function scrollChat() {
+    const wrap = $('qaMessages');
+    if (wrap) wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  let qaBusy = false;
+  async function askQuestion(question) {
+    if (qaBusy) return;
+    if (!App.currentId) { toast('请先打开一条会议记录'); return; }
+    const text = String(question || '').trim();
+    if (!text) return;
+    qaBusy = true;
+    appendMsg('user', text);
+    showTyping();
+    try {
+      const res = await api('/api/runs/' + encodeURIComponent(App.currentId) + '/ask', {
+        method: 'POST',
+        body: { question: text, history: App.qaHistory }
+      });
+      removeTyping();
+      appendMsg('assistant', mdToHtml(res.answer || '（没有返回内容）'), true);
+      App.qaHistory.push({ q: text, a: res.answer || '' });
+      if (res.fallback_local) toast('云端大模型不可达，本次由本机 Ollama 回答');
+    } catch (err) {
+      removeTyping();
+      appendMsg('assistant', '<span class="text-rose-600">问答失败：' + esc(err.message) + '</span>', true);
+    } finally {
+      qaBusy = false;
+    }
+  }
+
+  function askPreset(key) {
+    askQuestion(QA_PRESETS[key] || '');
+  }
+
+  function sendQuestion() {
+    const input = $('qaInput');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+    input.value = '';
+    askQuestion(text);
+  }
+
+  /* ==================== 工作区标签页 ==================== */
+  function switchTab(name) {
+    document.querySelectorAll('.ws-tab').forEach(function (t) {
+      t.classList.toggle('is-active', t.dataset.tab === name);
+    });
+    document.querySelectorAll('.ws-panel').forEach(function (p) {
+      p.classList.toggle('hidden', p.dataset.panel !== name);
+    });
+    const sc = $('wsScroll');
+    if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function setTranscriptView(mode) {
+    document.body.classList.toggle('show-translation', mode === 'bi');
+    document.querySelectorAll('[data-tview]').forEach(function (b) {
+      b.classList.toggle('is-active', b.dataset.tview === mode);
+    });
+  }
+
+  /* ==================== 新建会议弹窗 / 任务 ==================== */
+  const NM_META = {
+    upload: { title: '上传音视频', sub: '选择音视频文件，自动转写、区分说话人并生成结构化纪要' },
+    live: { title: '实时字幕', sub: '会议进行中边说边出字幕，支持中英逐句对照' },
+    mic: { title: '本地录音', sub: '点击下方按钮开始录音，录完点「开始生成纪要」' },
+    text: { title: '粘贴文本', sub: '粘贴会议文本，自动整理成结构化纪要' }
+  };
+
+  /* ==================== 发现 · 会议模板 ==================== */
+  const MEETING_TEMPLATES = [
+    {
+      id: 'weekly', name: '周会总结', icon: 'calendar-check', tone: 'from-indigo-500 to-violet-500',
+      desc: '按人汇总进展、计划与风险，适合每周例会',
+      prompt: '请按「周会总结」模板输出：1) 按发言人汇总本周完成事项；2) 下周计划；3) 风险与阻塞；4) 待办清单，标注负责人和截止时间。'
+    },
+    {
+      id: 'negotiation', name: '商务谈判', icon: 'handshake', tone: 'from-emerald-500 to-teal-500',
+      desc: '梳理双方立场、报价条款与遗留分歧',
+      prompt: '请按「商务谈判纪要」模板输出：1) 双方诉求与立场；2) 价格、条款等关键要点；3) 已达成的共识；4) 遗留分歧；5) 下一步动作（谁在何时前做什么）。'
+    },
+    {
+      id: 'retro', name: '项目复盘', icon: 'refresh-ccw', tone: 'from-amber-500 to-orange-500',
+      desc: '目标对比、根因分析与改进措施',
+      prompt: '请按「项目复盘」模板输出：1) 目标与结果对比；2) 做得好的地方；3) 问题与根因；4) 改进措施及负责人；5) 可沉淀的经验。'
+    },
+    {
+      id: 'interview', name: '客户访谈', icon: 'users', tone: 'from-sky-500 to-blue-500',
+      desc: '提炼客户痛点、需求与后续跟进建议',
+      prompt: '请按「客户访谈纪要」模板输出：1) 客户背景与目标；2) 痛点与需求；3) 关键原话引用；4) 购买/合作考虑点；5) 后续跟进建议。'
+    },
+    {
+      id: 'lecture', name: '学术讲座', icon: 'graduation-cap', tone: 'from-violet-500 to-purple-500',
+      desc: '研究背景、方法创新与结论局限',
+      prompt: '请按「学术讲座」模板输出：1) 研究背景与问题；2) 方法与创新点；3) 主要结论；4) 局限与争议；5) 可延伸思考。'
+    },
+    {
+      id: 'hiring', name: '面试记录', icon: 'user-check', tone: 'from-rose-500 to-pink-500',
+      desc: '经历亮点、岗位匹配度与录用建议',
+      prompt: '请按「面试记录」模板输出：1) 候选人经历与亮点；2) 与岗位要求的匹配度；3) 疑虑与风险；4) 面试官意见；5) 是否进入下一轮及理由。'
+    }
+  ];
+
+  function openDiscover() {
+    switchView('discover');
+    renderTemplates();
+  }
+
+  function renderTemplates() {
+    const grid = $('templateGrid');
+    if (!grid) return;
+    grid.innerHTML = MEETING_TEMPLATES.map(function (t) {
+      return '<div class="group flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">' +
+        '<span class="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br ' + t.tone + ' text-white shadow-sm"><i data-lucide="' + t.icon + '" class="size-5" aria-hidden="true"></i></span>' +
+        '<h3 class="mt-4 text-base font-semibold text-slate-900">' + esc(t.name) + '</h3>' +
+        '<p class="mt-1 text-xs leading-5 text-slate-500">' + esc(t.desc) + '</p>' +
+        '<p class="mt-3 flex-1 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-5 text-slate-500">' + esc(t.prompt) + '</p>' +
+        '<button onclick="useTemplate(\'' + t.id + '\')" class="mt-4 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-indigo-500 text-sm font-medium text-white shadow-sm shadow-indigo-500/30 transition hover:bg-indigo-600">' +
+          '<i data-lucide="sparkles" class="size-4" aria-hidden="true"></i>使用模板</button>' +
+      '</div>';
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function useTemplate(id) {
+    const t = MEETING_TEMPLATES.filter(function (x) { return x.id === id; })[0];
+    if (!t) return;
+    if (App.jobRunning) { toast('正在生成纪要，请稍候…'); return; }
+    switchView('home');
+    openNewMeeting('text', true);
+    const area = $('nmPrompt');
+    if (area) {
+      area.value = t.prompt;
+      syncPromptBadge();
+      setTimeout(function () { area.focus(); }, 200);
+    }
+    toast('已填入「' + t.name + '」模板，粘贴会议文本即可生成');
+  }
+
+  function syncPromptBadge() {
+    const area = $('nmPrompt');
+    const badge = $('nmPromptBadge');
+    if (badge) badge.classList.toggle('hidden', !(area && area.value.trim()));
+  }
+
+  function clearMeetingPrompt() {
+    const area = $('nmPrompt');
+    if (area) { area.value = ''; syncPromptBadge(); }
+    toast('已清空纪要模板');
+  }
+
+  function openNewMeeting(tab, direct) {
+    App.nmLock = direct ? (tab || 'upload') : '';
+    switchView('new');
+    resetJobProgress();
+    setMeetTab(tab || 'upload');
+    if (window.lucide) lucide.createIcons();
+    if (App.nmLock === 'text' && $('nmText')) setTimeout(function () { $('nmText').focus(); }, 80);
+  }
+
+  function closeNewMeeting() {
+    if (App.jobRunning) { toast('正在生成纪要，请稍候…'); return; }
+    if (App.mic.recorder && App.mic.recorder.state === 'recording') {
+      try { App.mic.recorder.stop(); } catch (e) {}
+    }
+    App.nmLock = '';
+    if (!$('view-new').classList.contains('hidden')) switchView('home');
+  }
+
+  function unlockMeetMode() {
+    App.nmLock = '';
+    syncNmChrome();
+  }
+
+  function syncNmChrome() {
+    const tabs = $('nmTabs');
+    const btn = $('nmSwitchBtn');
+    if (tabs) tabs.classList.toggle('hidden', !!App.nmLock);
+    if (btn) {
+      btn.classList.toggle('hidden', !App.nmLock);
+      btn.classList.toggle('inline-flex', !!App.nmLock);
+    }
+  }
+
+  function setMeetTab(name) {
+    const mode = name || 'upload';
+    App.nmMode = mode;
+    const meta = NM_META[mode] || NM_META.upload;
+    if ($('nmHeadTitle')) $('nmHeadTitle').textContent = meta.title;
+    if ($('nmHeadSub')) $('nmHeadSub').textContent = meta.sub;
+    document.querySelectorAll('.nm-tab').forEach(function (t) {
+      t.classList.toggle('is-active', t.dataset.nm === mode);
+    });
+    document.querySelectorAll('.nm-panel').forEach(function (p) {
+      p.classList.toggle('hidden', p.dataset.nmPanel !== mode);
+    });
+    syncNmChrome();
+    renderNewSidebar();
+  }
+
+  function renderNewSidebar() {
+    const s = App.settings || {};
+    const meta = App.meta || {};
+    const llm = meta.llm || {};
+    if ($('nmSideModel')) {
+      const model = s.llm_model || llm.model || '跟随设置';
+      $('nmSideModel').textContent = model;
+    }
+    if ($('nmSideLang')) {
+      const code = s.language || '';
+      const found = (meta.langs || []).filter(function (l) { return l.code === code; })[0];
+      $('nmSideLang').textContent = code ? (found ? found.label : code) : '自动识别';
+    }
+    if ($('nmSideAsr')) $('nmSideAsr').textContent = s.asr_model || 'small';
+    if ($('nmSideDiar')) $('nmSideDiar').textContent = s.enable_diarize === false ? '关闭' : '开启';
+    renderGlossaries(false);
+  }
+
+  const MAX_UPLOAD_FILES = 20;
+
+  function hasSelectedFile() {
+    return !!(App.uploadFiles && App.uploadFiles.length);
+  }
+
+  function fmtFileSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n >= 1024 * 1024 * 1024) return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+    if (n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+    if (n >= 1024) return (n / 1024).toFixed(0) + ' KB';
+    return n + ' B';
+  }
+
+  // 把 App.uploadFiles 回写到 input.files,保证原生表单/校验行为一致
+  function syncFileInput() {
+    const input = $('nmFile');
+    if (!input) return;
+    try {
+      const dt = new DataTransfer();
+      (App.uploadFiles || []).forEach(function (f) { dt.items.add(f); });
+      input.files = dt.files;
+    } catch (err) {
+      // 个别浏览器不允许给 input.files 赋值,不影响队列本身
+    }
+  }
+
+  function renderFileList() {
+    const files = App.uploadFiles || [];
+    const box = $('nmFileList');
+    if (box) {
+      box.innerHTML = files.map(function (f, i) {
+        return '<div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">' +
+          '<span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-indigo-500 ring-1 ring-slate-200">' + (i + 1) + '</span>' +
+          '<span class="min-w-0 flex-1 truncate text-xs text-slate-700" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+          '<span class="shrink-0 text-[11px] text-slate-400">' + esc(fmtFileSize(f.size)) + '</span>' +
+          '<button type="button" onclick="removeUploadFile(' + i + ')" title="移除这个文件" class="flex size-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-rose-50 hover:text-rose-500">' +
+          '<i data-lucide="x" class="size-3.5" aria-hidden="true"></i></button>' +
+          '</div>';
+      }).join('');
+      box.classList.toggle('hidden', !files.length);
+    }
+    const label = $('nmFileName');
+    if (label) {
+      if (!files.length) {
+        label.textContent = '未选择文件 · 支持 wav / mp3 / m4a / mp4 / webm';
+        label.classList.remove('text-indigo-600');
+      } else if (files.length === 1) {
+        label.textContent = '已选择：' + files[0].name;
+        label.classList.add('text-indigo-600');
+      } else {
+        label.textContent = '已选择 ' + files.length + ' 个文件 · 将按列表顺序依次生成';
+        label.classList.add('text-indigo-600');
+      }
+    }
+    const notice = $('nmFileNotice');
+    if (notice) notice.classList.toggle('hidden', files.length < 2);
+    const clearBtn = $('nmFileClear');
+    if (clearBtn) {
+      clearBtn.classList.toggle('hidden', !files.length);
+      clearBtn.classList.toggle('inline-flex', !!files.length);
+      const txt = $('nmFileClearText');
+      if (txt) txt.textContent = files.length > 1 ? '清空全部' : '移除文件';
+    }
+    const dropText = $('nmDropText');
+    if (dropText && !App.dropActive) {
+      dropText.textContent = files.length ? '点击或拖拽继续添加文件（支持多选）' : '点击或拖拽上传音视频';
+    }
+    const dropHint = $('nmDropHint');
+    if (dropHint && !App.dropActive) {
+      dropHint.textContent = files.length ? '可一次选择多个文件，按列表顺序依次转写' : '支持 wav / mp3 / m4a / mp4 / webm，单文件 ≤ 2 GB';
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function addUploadFiles(list) {
+    const arr = App.uploadFiles || (App.uploadFiles = []);
+    let added = 0;
+    let skipped = 0;
+    let dup = 0;
+    Array.prototype.forEach.call(list || [], function (f) {
+      if (!f) return;
+      if (arr.length >= MAX_UPLOAD_FILES) { skipped++; return; }
+      const okType = /^(audio|video)\//.test(f.type);
+      const okExt = /\.(wav|mp3|m4a|mp4|webm|ogg|flac|aac|wma|mov|mkv|avi)$/i.test(f.name);
+      if (!okType && !okExt) { skipped++; return; }
+      const same = arr.some(function (x) {
+        return x.name === f.name && x.size === f.size && x.lastModified === f.lastModified;
+      });
+      if (same) { dup++; return; }
+      arr.push(f);
+      added++;
+    });
+    syncFileInput();
+    renderFileList();
+    return { added: added, skipped: skipped, dup: dup };
+  }
+
+  function onFilesPicked(input) {
+    const res = addUploadFiles(input.files);
+    // 清空 value 以便再次选择同名文件,随后把队列重新写回 input.files
+    input.value = '';
+    syncFileInput();
+    if (res.skipped) {
+      toast('已忽略 ' + res.skipped + ' 个非音视频文件' + (App.uploadFiles.length >= MAX_UPLOAD_FILES ? '（一次最多 ' + MAX_UPLOAD_FILES + ' 个）' : ''));
+    } else if (res.dup) {
+      toast('已跳过 ' + res.dup + ' 个重复文件');
+    } else if (res.added) {
+      toast('已添加 ' + res.added + ' 个文件' + (App.uploadFiles.length > 1 ? '，共 ' + App.uploadFiles.length + ' 个' : ''));
+    } else if (!App.uploadFiles.length) {
+      toast('未选择任何文件');
+    }
+  }
+
+  function removeUploadFile(index) {
+    const files = App.uploadFiles || [];
+    if (index < 0 || index >= files.length) return;
+    const name = files[index].name;
+    files.splice(index, 1);
+    syncFileInput();
+    renderFileList();
+    toast('已移除：' + name);
+  }
+
+  function clearSelectedFile() {
+    const n = (App.uploadFiles || []).length;
+    App.uploadFiles = [];
+    syncFileInput();
+    renderFileList();
+    toast(n > 1 ? '已清空 ' + n + ' 个文件' : '已移除所选文件');
+  }
+
+  function setDropActive(on) {
+    const drop = $('nmDrop');
+    if (!drop) return;
+    [
+      'border-indigo-500', 'bg-indigo-100', 'ring-4',
+      'ring-indigo-300', 'shadow-xl', 'shadow-indigo-500/20'
+    ].forEach(function (c) { drop.classList.toggle(c, on); });
+    // 拖拽时临时去掉 hover 样式,避免 :hover 的优先级盖过高亮
+    ['hover:border-indigo-300', 'hover:bg-indigo-50/40'].forEach(function (c) {
+      drop.classList.toggle(c, !on);
+    });
+    const text = $('nmDropText');
+    const hint = $('nmDropHint');
+    if (text) text.textContent = on ? '松开即可添加文件' : (hasSelectedFile() ? '点击或拖拽继续添加文件（支持多选）' : '点击或拖拽上传音视频');
+    if (hint) hint.textContent = on ? '松开鼠标，加入文件列表' : (hasSelectedFile() ? '可一次选择多个文件，按列表顺序依次转写' : '支持 wav / mp3 / m4a / mp4 / webm，单文件 ≤ 2 GB');
+  }
+
+  function initUploadDrop() {
+    const drop = $('nmDrop');
+    const input = $('nmFile');
+    if (!drop || !input) return;
+    ['dragenter', 'dragover'].forEach(function (t) {
+      drop.addEventListener(t, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        setDropActive(true);
+      });
+    });
+    ['dragleave', 'drop'].forEach(function (t) {
+      drop.addEventListener(t, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (t === 'dragleave' && e.relatedTarget && drop.contains(e.relatedTarget)) return;
+        setDropActive(false);
+      });
+    });
+    drop.addEventListener('drop', function (e) {
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+      const res = addUploadFiles(files);
+      if (!res.added) {
+        toast(res.dup ? '这些文件已经在列表里了' : '请拖入音频或视频文件');
+        return;
+      }
+      toast('已添加 ' + res.added + ' 个文件' + (App.uploadFiles.length > 1 ? '，共 ' + App.uploadFiles.length + ' 个' : ''));
+    });
+    // 拖到上传区外面时不要让浏览器直接打开文件
+    ['dragover', 'drop'].forEach(function (t) {
+      window.addEventListener(t, function (e) {
+        if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types, 'Files') !== -1) {
+          e.preventDefault();
+        }
+      });
+    });
+  }
+
+  /* ---- 本地录音(MediaRecorder) ---- */
+  async function toggleMic() {
+    const mic = App.mic;
+    if (mic.recorder && mic.recorder.state === 'recording') {
+      mic.recorder.stop();
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast('当前浏览器不支持麦克风录音，请改用 Chrome / Edge');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mic.stream = stream;
+      mic.chunks = [];
+      mic.seconds = 0;
+      const mime = window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      mic.recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      mic.recorder.ondataavailable = function (e) { if (e.data && e.data.size) mic.chunks.push(e.data); };
+      mic.recorder.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        clearInterval(mic.timer);
+        mic.timer = null;
+        mic.blob = new Blob(mic.chunks, { type: mic.recorder.mimeType || 'audio/webm' });
+        $('micDemoBtn').classList.remove('rec-dot');
+        $('micDemoLabel').textContent = '录音完成 · 点击重新录音';
+        const player = $('micAudio');
+        if (player) {
+          player.src = URL.createObjectURL(mic.blob);
+          player.classList.remove('hidden');
+        }
+      };
+      mic.recorder.start();
+      $('micDemoBtn').classList.add('rec-dot');
+      $('micDemoLabel').textContent = '正在录音…';
+      mic.timer = setInterval(function () {
+        mic.seconds++;
+        $('micDemoTime').textContent = fmtClock(mic.seconds);
+      }, 1000);
+    } catch (err) {
+      toast('无法开始录音：' + err.message);
+    }
+  }
+
+  function appendJobOptions(form) {
+    const s = App.settings || {};
+    form.append('language', s.language || '');
+    form.append('translate_target', s.translate_target || '');
+    form.append('glossary', App.glossary || '');
+    form.append('enable_correct', s.enable_correct === false ? 'false' : 'true');
+    form.append('enable_diarize', s.enable_diarize === false ? 'false' : 'true');
+    form.append('num_speakers', String(s.num_speakers || 0));
+    form.append('enable_speaker_llm', s.enable_speaker_llm === false ? 'false' : 'true');
+    form.append('asr_model', s.asr_model || 'small');
+    form.append('prompt', ($('nmPrompt') && $('nmPrompt').value.trim()) || '');
+  }
+
+  function startGenerate() {
+    const active = document.querySelector('.nm-tab.is-active');
+    const mode = App.nmMode || (active ? active.dataset.nm : 'upload');
+    if (mode === 'live') {
+      closeNewMeeting();
+      switchView('live');
+      toast('点击「开始实时转写」开始录音');
+      return;
+    }
+    const form = new FormData();
+    form.append('source', mode === 'text' ? '文本输入' : (mode === 'mic' ? '本地录音' : '上传音频'));
+    if (mode === 'upload') {
+      const files = (App.uploadFiles || []).slice();
+      if (!files.length) { toast('请先选择音频或视频文件'); return; }
+      if (files.length > 1) { startBatch(files); return; }
+      form.append('file', files[0]);
+    } else if (mode === 'mic') {
+      if (!App.mic.blob) { toast('请先录制一段音频'); return; }
+      const ext = (App.mic.recorder && App.mic.recorder.mimeType.indexOf('mp4') > -1) ? 'mp4' : 'webm';
+      form.append('file', App.mic.blob, '本地录音.' + ext);
+    } else {
+      const text = $('nmText').value.trim();
+      if (!text) { toast('请先粘贴会议文本'); $('nmText').focus(); return; }
+      form.append('text', text);
+      form.append('title', $('nmTitle').value.trim());
+    }
+    appendJobOptions(form);
+    runJob(form);
+  }
+
+  async function runJob(form) {
+    switchView('new');
+    showJobProgress(true);
+    try {
+      const res = await api('/api/jobs', { method: 'POST', body: form });
+      App.job = res.job_id;
+      App.jobRunning = true;
+      App.jobFails = 0;
+      pollJob();
+    } catch (err) {
+      App.jobRunning = false;
+      showJobProgress(false);
+      toast('创建任务失败：' + err.message);
+    }
+  }
+
+  function showJobProgress(on) {
+    $('nmTabs').classList.toggle('hidden', on || !!App.nmLock);
+    if ($('nmSwitchBtn')) {
+      const showSwitch = !on && !!App.nmLock;
+      $('nmSwitchBtn').classList.toggle('hidden', !showSwitch);
+      $('nmSwitchBtn').classList.toggle('inline-flex', showSwitch);
+    }
+    $('nmBody').classList.toggle('hidden', on);
+    $('nmFooter').classList.toggle('hidden', on);
+    $('jobProgress').classList.toggle('hidden', !on);
+    if (on) {
+      $('jobError').classList.add('hidden');
+      $('jobError').textContent = '';
+      $('jobCloseBtn').classList.add('hidden');
+      ['asr', 'diar', 'correct', 'llm'].forEach(function (key) {
+        renderJobStep(key, { state: 'idle', detail: '等待中…' });
+      });
+      $('jobTitle').textContent = '正在生成纪要';
+      $('jobSub').textContent = '音频转写与纪要生成可能持续数分钟，请保持页面打开';
+    } else {
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  function resetJobProgress() {
+    App.batch = null;
+    App.job = null;
+    renderJobQueue();
+    showJobProgress(false);
+  }
+
+  /* ---- 多文件:按列表顺序依次生成 ---- */
+  function startBatch(files) {
+    App.batch = {
+      files: files,
+      index: 0,
+      state: files.map(function () { return 'wait'; }),
+      runIds: [],
+      errors: [],
+      finished: false
+    };
+    App.jobRunning = true;
+    switchView('new');
+    showJobProgress(true);
+    toast('共 ' + files.length + ' 个文件，将按列表顺序依次转写');
+    advanceBatch();
+  }
+
+  async function advanceBatch() {
+    const b = App.batch;
+    if (!b) return;
+    if (b.index >= b.files.length) { finishBatch(); return; }
+    const file = b.files[b.index];
+    b.state[b.index] = 'doing';
+    renderJobQueue();
+    $('jobTitle').textContent = '正在生成纪要（' + (b.index + 1) + '/' + b.files.length + '）';
+    $('jobSub').textContent = '当前文件：' + file.name + ' · 完成后自动开始下一个';
+    $('jobError').classList.add('hidden');
+    $('jobError').textContent = '';
+    $('jobCloseBtn').classList.add('hidden');
+    ['asr', 'diar', 'correct', 'llm'].forEach(function (key) {
+      renderJobStep(key, { state: 'idle', detail: '等待中…' });
+    });
+    const form = new FormData();
+    form.append('source', '上传音频（批量）');
+    form.append('file', file);
+    appendJobOptions(form);
+    try {
+      const res = await api('/api/jobs', { method: 'POST', body: form });
+      if (App.batch !== b) return;
+      App.job = res.job_id;
+      App.jobFails = 0;
+      pollJob();
+    } catch (err) {
+      if (App.batch !== b) return;
+      b.state[b.index] = 'failed';
+      b.errors[b.index] = err.message;
+      b.index += 1;
+      renderJobQueue();
+      if (b.index >= b.files.length) { finishBatch(); return; }
+      toast('「' + file.name + '」创建失败，继续处理下一个');
+      setTimeout(advanceBatch, 600);
+    }
+  }
+
+  function batchItemDone(job) {
+    const b = App.batch;
+    if (!b) return;
+    b.state[b.index] = 'done';
+    b.runIds[b.index] = job.run_id || '';
+    const no = b.index + 1;
+    b.index += 1;
+    App.job = null;
+    renderJobQueue();
+    if (b.index >= b.files.length) { finishBatch(); return; }
+    toast('第 ' + no + ' 个文件完成，继续下一个');
+    advanceBatch();
+  }
+
+  function batchItemFailed(job) {
+    const b = App.batch;
+    if (!b) return;
+    b.state[b.index] = 'failed';
+    b.errors[b.index] = job.error || '未知错误';
+    const no = b.index + 1;
+    b.index += 1;
+    App.job = null;
+    renderJobQueue();
+    if (b.index >= b.files.length) { finishBatch(); return; }
+    toast('第 ' + no + ' 个文件失败，继续处理下一个');
+    advanceBatch();
+  }
+
+  function finishBatch() {
+    const b = App.batch;
+    if (!b) return;
+    b.finished = true;
+    App.jobRunning = false;
+    App.job = null;
+    let ok = 0;
+    let bad = 0;
+    const lines = [];
+    b.files.forEach(function (f, i) {
+      if (b.state[i] === 'done') ok++;
+      if (b.state[i] === 'failed') {
+        bad++;
+        lines.push('· ' + f.name + '：' + (b.errors[i] || '未知错误'));
+      }
+    });
+    renderJobQueue();
+    $('jobTitle').textContent = bad
+      ? '批量处理结束（成功 ' + ok + ' 个，失败 ' + bad + ' 个）'
+      : '全部 ' + ok + ' 个文件已生成';
+    $('jobSub').textContent = bad
+      ? '失败原因见下方；已完成的可点队列里的「查看」打开'
+      : '点队列里的「查看」打开对应纪要，也可到「我的记录」里翻看';
+    if (bad) {
+      $('jobError').textContent = '以下文件未能生成：\n' + lines.join('\n');
+      $('jobError').classList.remove('hidden');
+    }
+    $('jobCloseBtn').classList.remove('hidden');
+    toast(bad ? '批量处理完成：' + ok + ' 个成功，' + bad + ' 个失败' : '批量处理完成：' + ok + ' 个文件全部成功');
+    refreshRuns().catch(function () {});
+    if (window.lucide) lucide.createIcons();
+  }
+
+  const BATCH_CHIPS = {
+    wait: { label: '等待中', chip: 'bg-slate-100 text-slate-500', badge: 'bg-slate-100 text-slate-500' },
+    doing: { label: '处理中', chip: 'bg-indigo-50 text-indigo-600', badge: 'bg-indigo-50 text-indigo-600' },
+    done: { label: '已完成', chip: 'bg-emerald-50 text-emerald-600', badge: 'bg-emerald-50 text-emerald-600' },
+    failed: { label: '失败', chip: 'bg-rose-50 text-rose-600', badge: 'bg-rose-50 text-rose-600' }
+  };
+
+  function renderJobQueue() {
+    const box = $('jobQueue');
+    if (!box) return;
+    const b = App.batch;
+    if (!b) {
+      box.classList.add('hidden');
+      box.innerHTML = '';
+      return;
+    }
+    box.classList.remove('hidden');
+    box.innerHTML = b.files.map(function (f, i) {
+      const st = b.state[i] || 'wait';
+      const chip = BATCH_CHIPS[st] || BATCH_CHIPS.wait;
+      const mark = st === 'done' ? '✓' : (st === 'failed' ? '!' : String(i + 1));
+      const err = st === 'failed' && b.errors[i]
+        ? '<span class="max-w-[10rem] shrink-0 truncate text-[11px] text-rose-500" title="' + esc(b.errors[i]) + '">' + esc(b.errors[i]) + '</span>'
+        : '';
+      const open = st === 'done' && b.runIds[i]
+        ? '<button type="button" onclick="openBatchRun(' + i + ')" class="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600">查看</button>'
+        : '';
+      return '<div class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ' + (st === 'doing' ? 'ring-indigo-200' : 'ring-slate-100') + '">' +
+        '<span class="flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ' + chip.badge + '">' + mark + '</span>' +
+        '<span class="min-w-0 flex-1 truncate text-xs text-slate-700" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+        err +
+        '<span class="shrink-0 rounded px-1.5 py-0.5 text-[11px] ' + chip.chip + '">' + chip.label + '</span>' +
+        open +
+        '</div>';
+    }).join('');
+  }
+
+  function openBatchRun(i) {
+    const b = App.batch;
+    if (!b || !b.runIds[i]) return;
+    openRun(b.runIds[i]);
+  }
+
+  function renderJobStep(key, step) {
+    const row = $('jp-' + key);
+    if (!row) return;
+    const icon = row.querySelector('[data-jp-icon]');
+    const detail = row.querySelector('[data-jp-detail]');
+    const state = (step && step.state) || 'idle';
+    const marks = { idle: '○', running: '⏳', done: '✓', failed: '⚠' };
+    const colors = {
+      idle: 'bg-slate-100 text-slate-400',
+      running: 'bg-indigo-50 text-indigo-600',
+      done: 'bg-emerald-50 text-emerald-600',
+      failed: 'bg-rose-50 text-rose-600'
+    };
+    if (icon) {
+      icon.className = 'flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ' + colors[state];
+      icon.textContent = marks[state];
+    }
+    if (detail) detail.textContent = (step && step.detail) || '等待中…';
+    row.classList.toggle('opacity-60', state === 'idle');
+  }
+
+  async function pollJob() {
+    clearTimeout(App.jobTimer);
+    if (!App.job) return;
+    const b = App.batch;
+    try {
+      const job = await api('/api/jobs/' + encodeURIComponent(App.job));
+      App.jobFails = 0;
+      ['asr', 'diar', 'correct', 'llm'].forEach(function (key) {
+        renderJobStep(key, job.steps[key]);
+      });
+      if (job.state === 'done') {
+        if (b) { batchItemDone(job); return; }
+        App.jobRunning = false;
+        $('jobTitle').textContent = '纪要已生成';
+        $('jobSub').textContent = '正在打开结果…';
+        toast('纪要生成完成');
+        closeNewMeeting();
+        if (job.run_id) {
+          await refreshRuns();
+          openRun(job.run_id);
+        }
+        return;
+      }
+      if (job.state === 'failed') {
+        if (b) { batchItemFailed(job); return; }
+        App.jobRunning = false;
+        $('jobError').textContent = '生成失败：' + (job.error || '未知错误');
+        $('jobError').classList.remove('hidden');
+        $('jobTitle').textContent = '生成失败';
+        $('jobSub').textContent = '可以关闭窗口后重试，或检查设置页的模型配置';
+        $('jobCloseBtn').classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+      App.jobTimer = setTimeout(pollJob, 1500);
+    } catch (err) {
+      App.jobFails = (App.jobFails || 0) + 1;
+      if (App.jobFails >= 10) {
+        App.jobRunning = false;
+        App.job = null;
+        $('jobError').textContent = '与本地服务的连接已中断：' + err.message;
+        $('jobError').classList.remove('hidden');
+        if (b) {
+          b.finished = true;
+          b.state[b.index] = 'failed';
+          b.errors[b.index] = '连接中断，未处理';
+          b.index += 1;
+          renderJobQueue();
+          $('jobTitle').textContent = '连接中断，批量任务已停止';
+          $('jobSub').textContent = '请确认启动窗口仍在运行，然后重新生成剩余文件';
+        } else {
+          $('jobTitle').textContent = '连接中断';
+          $('jobSub').textContent = '请确认启动窗口仍在运行，然后重新生成';
+        }
+        $('jobCloseBtn').classList.remove('hidden');
+        return;
+      }
+      App.jobTimer = setTimeout(pollJob, 3000);
+    }
+  }
+
+  /* ==================== 实时字幕 ==================== */
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function initLive() {
+    if (App.live && App.live.running) return;
+    App.live = {
+      running: false,
+      mode: null,
+      finalText: '',
+      interimText: '',
+      seconds: 0,
+      startedAt: 0,
+      timer: null,
+      ws: null,
+      ready: false,
+      micStream: null,
+      audioCtx: null,
+      processor: null,
+      pcmChunks: [],
+      pcmTotal: 0,
+      frameTimer: null,
+      fallbackTimer: null,
+      recognition: null,
+      lastFinalSeg: -1,
+      lastSent: '',
+      recorder: null,
+      recStream: null,
+      recChunks: [],
+      audioBlob: null
+    };
+    const meta = App.meta || {};
+    const langSel = $('liveLang');
+    if (langSel) {
+      langSel.value = (meta.ui && meta.ui.live_lang) || 'zh-CN';
+    }
+    const targetSel = $('liveTarget');
+    if (targetSel && meta.langs) {
+      targetSel.innerHTML = meta.langs.map(function (l) {
+        return '<option value="' + esc(l.code) + '"' + (l.code === ((meta.ui && meta.ui.live_target) || 'en') ? ' selected' : '') + '>' + esc(l.label) + ' (' + esc(l.code) + ')</option>';
+      }).join('');
+    }
+    const engine = $('liveEngine');
+    if (engine) {
+      const keys = meta.xfyun || {};
+      engine.textContent = (keys.appid && keys.apikey) ? '讯飞 rtasr' : '浏览器 Web Speech';
+    }
+    const toggle = $('liveTranslate');
+    if (toggle) toggleLiveTranslation(toggle.checked);
+    syncLiveExport();
+  }
+
+  function liveStatus(text, color) {
+    const label = $('liveStatus');
+    if (label) label.textContent = text;
+    const dot = $('liveStatusDot');
+    if (dot) dot.className = 'size-2 rounded-full ' + (color || 'bg-slate-300');
+  }
+
+  function liveSetRunning(on) {
+    const btn = $('liveBtn');
+    const label = $('liveBtnLabel');
+    const dot = $('liveBtnDot');
+    $('waveform').classList.toggle('recording', on);
+    btn.classList.toggle('bg-rose-500', on);
+    btn.classList.toggle('hover:bg-rose-600', on);
+    btn.classList.toggle('bg-indigo-500', !on);
+    btn.classList.toggle('hover:bg-indigo-600', !on);
+    label.textContent = on ? '停止转写' : '开始实时转写';
+    dot.classList.toggle('rec-dot', on);
+  }
+
+  function toggleLive() {
+    if (!App.live) initLive();
+    if (App.live.running) stopLive();
+    else startLive();
+  }
+
+  async function startLive() {
+    const l = App.live;
+    l.running = true;
+    l.finalText = '';
+    l.interimText = '';
+    l.seconds = 0;
+    l.startedAt = Date.now();
+    l.lastFinalSeg = -1;
+    l.lastSent = '';
+    l.audioBlob = null;
+    l.recChunks = [];
+    l.recorder = null;
+    l.recStream = null;
+    syncLiveExport();
+    clearLiveLines();
+    $('liveTimer').textContent = '00:00';
+    liveSetRunning(true);
+    liveStatus('正在启动…', 'bg-indigo-500');
+
+    const keys = (App.meta && App.meta.xfyun) || {};
+    const lang = $('liveLang') ? $('liveLang').value : 'zh-CN';
+    const cloudLang = lang === 'zh-CN' ? 'cn' : (lang === 'en-US' ? 'en' : null);
+    const engine = $('liveEngine');
+    if (keys.appid && keys.apikey && cloudLang) {
+      if (engine) engine.textContent = '讯飞 rtasr';
+      startCloud(cloudLang);
+    } else {
+      if (engine) engine.textContent = '浏览器 Web Speech';
+      startSpeech();
+    }
+
+    l.timer = setInterval(function () {
+      l.seconds = Math.floor((Date.now() - l.startedAt) / 1000);
+      $('liveTimer').textContent = fmtClock(l.seconds);
+    }, 1000);
+  }
+
+  function stopLive() {
+    const l = App.live;
+    if (!l) return;
+    stopLiveRecorder();
+    if (l.mode === 'cloud') {
+      if (l.ws && l.ws.readyState === 1) {
+        try { l.ws.send(JSON.stringify({ type: 'end' })); } catch (e) {}
+      }
+      cleanupCloud();
+    } else if (l.mode === 'speech' && l.recognition) {
+      try { l.recognition.stop(); } catch (e) {}
+      l.recognition = null;
+    }
+    l.running = false;
+    l.mode = null;
+    clearInterval(l.timer);
+    l.timer = null;
+    liveSetRunning(false);
+    liveStatus('已停止', 'bg-slate-300');
+    $('liveBtnLabel').textContent = '重新转写';
+    removeInterim();
+    syncLiveExport();
+  }
+
+  function startSpeech() {
+    const l = App.live;
+    l.mode = 'speech';
+    if (!SpeechRecognitionCtor) {
+      liveStatus('浏览器不支持语音识别，请改用 Chrome / Edge', 'bg-rose-500');
+      l.running = false;
+      liveSetRunning(false);
+      return;
+    }
+    try {
+      const recognition = new SpeechRecognitionCtor();
+      recognition.lang = $('liveLang').value;
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      l.recognition = recognition;
+      // Web Speech 自己占用麦克风,这里另开一路仅用于本地录音
+      startLiveRecorder();
+
+      recognition.onstart = function () { liveStatus('识别中 · Web Speech', 'bg-rose-500'); };
+      recognition.onresult = function (event) {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          const text = result[0].transcript;
+          if (result.isFinal) {
+            const chunk = text.trim();
+            if (chunk) {
+              l.finalText += chunk;
+              appendLiveLine(chunk);
+            }
+          } else {
+            interim += text;
+          }
+        }
+        l.interimText = interim;
+        renderInterim(interim);
+      };
+      recognition.onerror = function (event) {
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          liveStatus('麦克风权限被拒绝', 'bg-rose-500');
+        } else if (event.error === 'no-speech') {
+          liveStatus('未检测到语音，请继续说话…', 'bg-rose-500');
+        } else if (event.error !== 'aborted') {
+          liveStatus('识别出错：' + event.error, 'bg-rose-500');
+        }
+      };
+      recognition.onend = function () {
+        if (l.running && l.mode === 'speech') {
+          setTimeout(function () {
+            if (l.running && l.mode === 'speech') {
+              try { recognition.start(); } catch (e) {}
+            }
+          }, 150);
+        }
+      };
+      recognition.start();
+    } catch (err) {
+      liveStatus('无法启动语音识别：' + err.message, 'bg-rose-500');
+      l.running = false;
+      liveSetRunning(false);
+    }
+  }
+
+  function startCloud(cloudLang) {
+    const l = App.live;
+    l.mode = 'cloud';
+    l.ready = false;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      liveStatus('浏览器不支持麦克风，改用 Web Speech', 'bg-indigo-500');
+      startSpeech();
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
+    }).then(function (stream) {
+      if (!l.running) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+      l.micStream = stream;
+      startLiveRecorder(stream);
+      try {
+        setupAudioPipeline(stream);
+      } catch (e) {
+        liveStatus('音频处理初始化失败，改用 Web Speech', 'bg-indigo-500');
+        fallbackToSpeech();
+        return;
+      }
+      connectCloud(cloudLang);
+    }).catch(function (err) {
+      if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+        liveStatus('麦克风权限被拒绝', 'bg-rose-500');
+        l.running = false;
+        l.mode = null;
+        liveSetRunning(false);
+      } else {
+        liveStatus('麦克风采集失败，改用 Web Speech', 'bg-indigo-500');
+        startSpeech();
+      }
+    });
+  }
+
+  function setupAudioPipeline(stream) {
+    const l = App.live;
+    l.audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    if (l.audioCtx.state === 'suspended') l.audioCtx.resume();
+    const source = l.audioCtx.createMediaStreamSource(stream);
+    l.processor = l.audioCtx.createScriptProcessor(1024, 1, 1);
+    const mute = l.audioCtx.createGain();
+    mute.gain.value = 0;
+    source.connect(l.processor);
+    l.processor.connect(mute);
+    mute.connect(l.audioCtx.destination);
+    l.pcmChunks = [];
+    l.pcmTotal = 0;
+    l.processor.onaudioprocess = function (e) {
+      const pcm = downsampleTo16k(e.inputBuffer.getChannelData(0), l.audioCtx.sampleRate);
+      l.pcmChunks.push(pcm);
+      l.pcmTotal += pcm.length;
+    };
+  }
+
+  function connectCloud(cloudLang) {
+    const l = App.live;
+    const base = (App.meta && App.meta.rtasr_ws_url) || 'ws://127.0.0.1:8000/rtasr';
+    const ws = new WebSocket(base + '?lang=' + encodeURIComponent(cloudLang));
+    l.ws = ws;
+    ws.binaryType = 'arraybuffer';
+
+    l.frameTimer = setInterval(function () {
+      if (l.ready && ws.readyState === 1) {
+        const frame = drainFrame();
+        if (frame) ws.send(frame.buffer);
+      }
+    }, 40);
+
+    l.fallbackTimer = setTimeout(function () {
+      if (l.mode === 'cloud' && l.running && !l.ready) {
+        liveStatus('云端连接超时，改用 Web Speech', 'bg-indigo-500');
+        fallbackToSpeech();
+      }
+    }, 5000);
+
+    ws.onopen = function () {
+      liveStatus('云端已连接，等待引擎就绪…', 'bg-indigo-500');
+      const keys = (App.meta && App.meta.xfyun) || {};
+      ws.send(JSON.stringify({ type: 'config', appid: keys.appid || '', apikey: keys.apikey || '' }));
+    };
+
+    ws.onmessage = function (ev) {
+      let obj;
+      try { obj = JSON.parse(ev.data); } catch (e) { return; }
+      if (obj.type === 'status' && obj.state === 'started') {
+        l.ready = true;
+        if (l.fallbackTimer) { clearTimeout(l.fallbackTimer); l.fallbackTimer = null; }
+        liveStatus('识别中 · 讯飞云端', 'bg-rose-500');
+      } else if (obj.type === 'result') {
+        const text = obj.text || '';
+        if (obj.final) {
+          if (obj.seg_id !== l.lastFinalSeg) {
+            l.lastFinalSeg = obj.seg_id;
+            if (text) {
+              l.finalText += text;
+              appendLiveLine(text);
+            }
+          }
+          l.interimText = '';
+          removeInterim();
+        } else {
+          l.interimText = text;
+          renderInterim(text);
+        }
+      } else if (obj.type === 'error') {
+        liveStatus('云端错误：' + (obj.message || obj.code || ''), 'bg-rose-500');
+        if (l.mode === 'cloud' && l.running && !l.ready) fallbackToSpeech();
+      }
+    };
+    ws.onerror = function () {
+      if (l.mode === 'cloud' && l.running && !l.ready) fallbackToSpeech();
+    };
+    ws.onclose = function () {
+      if (l.mode === 'cloud' && l.running && !l.ready) fallbackToSpeech();
+    };
+  }
+
+  function drainFrame() {
+    const l = App.live;
+    if (l.pcmTotal < 640) return null;
+    const frame = new Int16Array(640);
+    let filled = 0;
+    while (filled < 640) {
+      const first = l.pcmChunks[0];
+      const need = 640 - filled;
+      if (first.length <= need) {
+        frame.set(first, filled);
+        filled += first.length;
+        l.pcmChunks.shift();
+      } else {
+        frame.set(first.subarray(0, need), filled);
+        l.pcmChunks[0] = first.subarray(need);
+        filled += need;
+      }
+    }
+    l.pcmTotal -= 640;
+    return frame;
+  }
+
+  function downsampleTo16k(float32, srcRate) {
+    const ratio = srcRate / 16000;
+    if (ratio === 1) return float32ToInt16(float32);
+    const outLen = Math.max(1, Math.round(float32.length / ratio));
+    const out = new Int16Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      let idx = Math.round(i * ratio);
+      if (idx >= float32.length) idx = float32.length - 1;
+      out[i] = f32ToS16(float32[idx]);
+    }
+    return out;
+  }
+
+  function float32ToInt16(float32) {
+    const out = new Int16Array(float32.length);
+    for (let i = 0; i < float32.length; i++) out[i] = f32ToS16(float32[i]);
+    return out;
+  }
+
+  function f32ToS16(s) {
+    s = Math.max(-1, Math.min(1, s));
+    return s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+
+  /* ---- 实时字幕·本地录音(随转写一起录,停止后可导出) ---- */
+  function pickAudioMime() {
+    if (!window.MediaRecorder) return '';
+    const cands = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    for (let i = 0; i < cands.length; i++) {
+      try {
+        if (MediaRecorder.isTypeSupported(cands[i])) return cands[i];
+      } catch (e) {}
+    }
+    return '';
+  }
+
+  function syncLiveExport() {
+    const btn = $('liveExportBtn');
+    if (!btn) return;
+    const l = App.live;
+    const ready = !!(l && l.audioBlob && l.audioBlob.size && !l.running);
+    btn.disabled = !ready;
+    btn.classList.toggle('opacity-40', !ready);
+    btn.classList.toggle('cursor-not-allowed', !ready);
+    btn.title = ready ? '下载本次会议的本地录音' : '停止转写后可导出本次录音';
+  }
+
+  function startLiveRecorder(stream) {
+    const l = App.live;
+    if (!l || !window.MediaRecorder) return;
+    if (l.recorder && l.recorder.state !== 'inactive') return;
+    const begin = function (s) {
+      if (!l.running) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+      l.recStream = s;
+      const mime = pickAudioMime();
+      try {
+        l.recorder = mime ? new MediaRecorder(s, { mimeType: mime, audioBitsPerSecond: 64000 }) : new MediaRecorder(s);
+      } catch (err) {
+        l.recorder = null;
+        syncLiveExport();
+        return;
+      }
+      l.recorder.ondataavailable = function (e) {
+        if (e.data && e.data.size) l.recChunks.push(e.data);
+      };
+      l.recorder.onstop = function () {
+        if (!l.recChunks.length) { syncLiveExport(); return; }
+        l.audioBlob = new Blob(l.recChunks, { type: l.recChunks[0].type || 'audio/webm' });
+        syncLiveExport();
+      };
+      try {
+        l.recorder.start(1000);
+      } catch (err) {
+        l.recorder = null;
+      }
+    };
+    if (stream) {
+      begin(stream);
+    } else if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } })
+        .then(begin)
+        .catch(function () { /* 录音不可用不影响转写 */ });
+    }
+  }
+
+  function stopLiveRecorder() {
+    const l = App.live;
+    if (!l) return;
+    if (l.recorder && l.recorder.state !== 'inactive') {
+      try { l.recorder.stop(); } catch (e) {}
+    }
+    l.recorder = null;
+    if (l.recStream) {
+      l.recStream.getTracks().forEach(function (t) { t.stop(); });
+      l.recStream = null;
+    }
+  }
+
+  function exportLiveAudio() {
+    const l = App.live;
+    if (!l || !l.audioBlob || !l.audioBlob.size) {
+      toast('还没有可导出的录音，请先开始实时转写');
+      return;
+    }
+    const type = l.audioBlob.type || '';
+    const ext = type.indexOf('mp4') >= 0 ? 'm4a' : (type.indexOf('ogg') >= 0 ? 'ogg' : 'webm');
+    const d = new Date();
+    const pad2 = function (n) { return String(n).padStart(2, '0'); };
+    const stamp = d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '_' + pad2(d.getHours()) + pad2(d.getMinutes());
+    const url = URL.createObjectURL(l.audioBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '会议录音_' + stamp + '.' + ext;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    toast('录音已导出（' + ext.toUpperCase() + '）');
+  }
+
+  function cleanupCloud() {
+    const l = App.live;
+    if (!l) return;
+    if (l.fallbackTimer) { clearTimeout(l.fallbackTimer); l.fallbackTimer = null; }
+    if (l.frameTimer) { clearInterval(l.frameTimer); l.frameTimer = null; }
+    if (l.processor) { try { l.processor.disconnect(); } catch (e) {} l.processor = null; }
+    if (l.audioCtx) { try { l.audioCtx.close(); } catch (e) {} l.audioCtx = null; }
+    if (l.micStream) { l.micStream.getTracks().forEach(function (t) { t.stop(); }); l.micStream = null; }
+    if (l.ws) { try { l.ws.close(); } catch (e) {} l.ws = null; }
+    l.pcmChunks = [];
+    l.pcmTotal = 0;
+    l.ready = false;
+  }
+
+  function fallbackToSpeech() {
+    const l = App.live;
+    stopLiveRecorder();
+    cleanupCloud();
+    if (!l.running) return;
+    l.mode = 'speech';
+    startSpeech();
+  }
+
+  function clearLiveLines() {
+    const wrap = $('liveTranscript');
+    if (!wrap) return;
+    wrap.innerHTML = '<div id="livePlaceholder" class="flex h-full flex-col items-center justify-center text-center">' +
+      '<span class="flex size-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-500"><i data-lucide="mic" class="size-5"></i></span>' +
+      '<p class="mt-3 text-sm font-medium text-slate-700">等待语音输入</p>' +
+      '<p class="mt-1 text-xs text-slate-400">开始转写后，识别结果会实时显示在这里</p>' +
+    '</div>';
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function removePlaceholder() {
+    const ph = $('livePlaceholder');
+    if (ph) ph.remove();
+  }
+
+  function appendLiveLine(text) {
+    const l = App.live;
+    removePlaceholder();
+    removeInterim();
+    const wrap = $('liveTranscript');
+    const time = fmtClock((Date.now() - l.startedAt) / 1000);
+    const div = document.createElement('div');
+    div.className = 'rise flex gap-3 border-b border-slate-100 px-1 py-3 last:border-0';
+    div.innerHTML = '<span class="w-11 shrink-0 pt-0.5 font-mono text-[11px] text-slate-400">' + time + '</span>' +
+      '<div class="min-w-0 flex-1"><p class="text-sm leading-6 text-slate-800">' + esc(text) + '</p>' +
+      '<p class="live-en mt-0.5 text-xs leading-5 text-slate-400"></p></div>';
+    wrap.appendChild(div);
+    wrap.scrollTop = wrap.scrollHeight;
+    const en = div.querySelector('.live-en');
+    if ($('liveTranslate') && $('liveTranslate').checked) {
+      en.textContent = '翻译中…';
+      translateLiveChunk(text, en);
+    }
+  }
+
+  async function translateLiveChunk(text, el) {
+    const target = $('liveTarget') ? $('liveTarget').value : 'en';
+    try {
+      const res = await api('/api/live/translate', { method: 'POST', body: { text: text, target: target } });
+      el.textContent = res.text || '';
+    } catch (err) {
+      el.textContent = '（翻译失败：' + err.message + '）';
+    }
+  }
+
+  function renderInterim(text) {
+    removePlaceholder();
+    let el = $('liveInterim');
+    if (!text) { removeInterim(); return; }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'liveInterim';
+      el.className = 'flex gap-3 border-b border-slate-100 px-1 py-3';
+      el.innerHTML = '<span class="w-11 shrink-0 pt-0.5 font-mono text-[11px] text-slate-300">…</span>' +
+        '<div class="min-w-0 flex-1 text-sm leading-6 text-slate-500" data-interim-text></div>';
+      $('liveTranscript').appendChild(el);
+    }
+    el.querySelector('[data-interim-text]').textContent = text;
+    $('liveTranscript').scrollTop = $('liveTranscript').scrollHeight;
+  }
+
+  function removeInterim() {
+    const el = $('liveInterim');
+    if (el) el.remove();
+  }
+
+  function clearLive() {
+    stopLive();
+    const l = App.live;
+    l.finalText = '';
+    l.interimText = '';
+    l.seconds = 0;
+    $('liveTimer').textContent = '00:00';
+    $('liveBtnLabel').textContent = '开始实时转写';
+    clearLiveLines();
+    liveStatus('未开始', 'bg-slate-300');
+  }
+
+  function toggleLiveTranslation(on) {
+    $('liveTranscript').classList.toggle('hide-en', !on);
+    if (!on) return;
+    document.querySelectorAll('#liveTranscript .live-en').forEach(function (el) {
+      const source = el.parentElement ? el.parentElement.querySelector('p') : null;
+      if (source && !el.textContent.trim()) {
+        el.textContent = '翻译中…';
+        translateLiveChunk(source.textContent, el);
+      }
+    });
+  }
+
+  function generateFromLive() {
+    const l = App.live;
+    if (l && l.running) stopLive();
+    const text = (l && l.finalText || '').trim();
+    if (!text) { toast('还没有识别到文字，请先开始实时转写'); return; }
+    const form = new FormData();
+    form.append('text', text);
+    form.append('title', '实时字幕 ' + new Date().toLocaleString('zh-CN', { hour12: false }));
+    form.append('source', '实时字幕');
+    appendJobOptions(form);
+    runJob(form);
+  }
+
+  /* ==================== 设置 ==================== */
+  function fillSettings() {
+    const meta = App.meta;
+    if (!meta) return;
+    const llm = meta.llm || {};
+    const provider = $('setLlmProvider');
+    if (provider) {
+      provider.innerHTML = (llm.options || []).map(function (opt) {
+        return '<option value="' + esc(opt) + '">' + esc(opt) + '</option>';
+      }).join('');
+      provider.value = llm.provider || 'DeepSeek · deepseek-chat';
+    }
+    if ($('setLlmKey')) $('setLlmKey').value = llm.api_key || '';
+    updateLlmFields();
+
+    const xf = meta.xfyun || {};
+    if ($('setXfAppid')) $('setXfAppid').value = xf.appid || '';
+    if ($('setXfApikey')) $('setXfApikey').value = xf.apikey || '';
+    if ($('setWsUrl')) $('setWsUrl').value = meta.rtasr_ws_url || '';
+    const badge = $('xfBadge');
+    if (badge) {
+      const ok = !!(xf.appid && xf.apikey);
+      badge.textContent = ok ? '已配置' : '未配置';
+      badge.className = 'ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ' +
+        (ok ? 'bg-emerald-50 text-emerald-600 ring-emerald-100' : 'bg-slate-100 text-slate-500 ring-slate-200');
+    }
+
+    const ui = meta.ui || {};
+    if ($('setLang')) $('setLang').value = ui.language || '';
+    if ($('setTarget')) $('setTarget').value = ui.translate_target || '';
+    if ($('setAsrModel')) $('setAsrModel').value = ui.asr_model || 'small';
+    if ($('setNumSpeakers')) $('setNumSpeakers').value = String(ui.num_speakers || 0);
+    if ($('setCorrect')) $('setCorrect').checked = ui.enable_correct !== false;
+    if ($('setDiarize')) $('setDiarize').checked = ui.enable_diarize !== false;
+    if ($('setSpeakerLlm')) $('setSpeakerLlm').checked = ui.enable_speaker_llm !== false;
+    App.glossary = meta.glossary || '';
+    renderGlossaries(true);
+
+    const hint = $('ollamaHint');
+    if (hint) {
+      hint.textContent = meta.ollama && meta.ollama.available
+        ? '🟢 本机 Ollama 可用（' + meta.ollama.model + '），留空 key 时可用它免费兜底。'
+        : '🟠 本机 Ollama 未检测到；留空 key 时请先安装并启动 Ollama（ollama.com）。';
+    }
+  }
+
+  function updateLlmFields() {
+    const provider = $('setLlmProvider');
+    if (!provider) return;
+    const meta = App.meta || {};
+    const presets = (meta.llm && meta.llm.presets) || {};
+    const value = provider.value;
+    const custom = value === '自定义…';
+    const preset = presets[value];
+    const base = $('setLlmBase');
+    const model = $('setLlmModel');
+    if (base) {
+      base.disabled = !custom;
+      if (preset) base.value = preset[0];
+    }
+    if (model) {
+      model.disabled = !custom;
+      if (preset) model.value = preset[1];
+    }
+    if (custom && base && !base.value) base.value = meta.llm && meta.llm.base_url || '';
+    if (custom && model && !model.value) model.value = meta.llm && meta.llm.model || '';
+  }
+
+  /* ---- 术语表(新建会议 / 实时字幕 右侧共用) ---- */
+  function glossaryTerms(text) {
+    const raw = text == null ? (App.glossary || '') : text;
+    return raw
+      .replace(/[，、]/g, ',')
+      .split(/[\n,;；]/)
+      .map(function (t) { return t.trim(); })
+      .filter(Boolean);
+  }
+
+  function renderGlossaries(force) {
+    const terms = glossaryTerms();
+    const count = terms.length;
+    ['nmGlossText', 'liveGlossText'].forEach(function (id) {
+      const el = $(id);
+      if (el && (force || document.activeElement !== el)) el.value = App.glossary || '';
+    });
+    const chips = count
+      ? terms.slice(0, 10).map(function (t) {
+          return '<span class="max-w-full truncate rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-700 ring-1 ring-amber-100" title="' + esc(t) + '">' + esc(t) + '</span>';
+        }).join('') + (count > 10 ? '<span class="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-500">+' + (count - 10) + '</span>' : '')
+      : '<span class="text-[11px] text-slate-400">还没有术语，可点下面「从文件导入」</span>';
+    ['nmGlossChips', 'liveGlossChips'].forEach(function (id) {
+      const box = $(id);
+      if (box) box.innerHTML = chips;
+    });
+    ['nmGlossCount', 'liveGlossCount'].forEach(function (id) {
+      const badge = $(id);
+      if (!badge) return;
+      badge.textContent = count ? '已导入 ' + count + ' 个' : '未导入';
+      badge.className = 'ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ' +
+        (count ? 'bg-emerald-50 text-emerald-600 ring-emerald-100' : 'bg-slate-100 text-slate-500 ring-slate-200');
+    });
+    const side = $('nmSideGlossary');
+    if (side) side.textContent = count ? count + ' 个术语' : '未导入';
+  }
+
+  function pickGlossaryFile() {
+    const input = $('glossaryFile');
+    if (input) input.click();
+  }
+
+  async function saveInlineGlossary(textareaId) {
+    const el = $(textareaId);
+    const value = el ? el.value : (App.glossary || '');
+    App.glossary = value;
+    renderGlossaries(true);
+    try {
+      await api('/api/settings', { method: 'POST', body: { glossary: value } });
+      if (App.meta) App.meta.glossary = value;
+      const n = glossaryTerms().length;
+      toast(n ? '术语表已保存（' + n + ' 个术语）' : '术语表已清空');
+    } catch (err) {
+      toast('保存失败：' + err.message);
+    }
+  }
+
+  async function saveSettings() {
+    const provider = $('setLlmProvider').value;
+    const payload = {
+      llm: {
+        provider: provider,
+        api_key: $('setLlmKey').value.trim(),
+        base_url: $('setLlmBase').value.trim(),
+        model: $('setLlmModel').value.trim()
+      },
+      xfyun: {
+        appid: $('setXfAppid').value.trim(),
+        apikey: $('setXfApikey').value.trim()
+      },
+      glossary: App.glossary || '',
+      ui: {
+        language: $('setLang').value,
+        translate_target: $('setTarget').value,
+        asr_model: $('setAsrModel').value,
+        num_speakers: parseInt($('setNumSpeakers').value, 10) || 0,
+        enable_correct: $('setCorrect').checked,
+        enable_diarize: $('setDiarize').checked,
+        enable_speaker_llm: $('setSpeakerLlm').checked,
+        live_lang: $('liveLang') ? $('liveLang').value : 'zh-CN',
+        live_target: $('liveTarget') ? $('liveTarget').value : 'en'
+      }
+    };
+    try {
+      await api('/api/settings', { method: 'POST', body: payload });
+      await loadMeta();
+      toast('设置已保存');
+    } catch (err) {
+      toast('保存失败：' + err.message);
+    }
+  }
+
+  function resetSettings() {
+    fillSettings();
+    toast('已恢复为上次保存的设置');
+  }
+
+  async function importGlossary(input) {
+    if (!input.files || !input.files.length) return;
+    const form = new FormData();
+    form.append('file', input.files[0]);
+    const name = input.files[0].name;
+    input.value = '';
+    toast('正在读取并提取术语…');
+    try {
+      const res = await api('/api/glossary/extract', { method: 'POST', body: form });
+      App.glossary = res.glossary || '';
+      renderGlossaries(true);
+      await api('/api/settings', { method: 'POST', body: { glossary: res.glossary || '' } });
+      if (App.meta) App.meta.glossary = res.glossary || '';
+      toast('已从 ' + name + ' 提取 ' + (res.terms || []).length + ' 个术语');
+    } catch (err) {
+      toast('导入失败：' + err.message);
+    }
+  }
+
+  /* ==================== 数据加载 ==================== */
+  async function loadMeta() {
+    const meta = await api('/api/meta');
+    App.meta = meta;
+    App.settings = meta.ui || {};
+    App.runs = meta.runs || [];
+    renderRuns();
+    fillSettings();
+    renderNewSidebar();
+    initLive();
+    if (window.lucide) lucide.createIcons();
+    if (!$('view-workspace').classList.contains('hidden') && !App.current && App.runs.length) {
+      openRun(App.runs[0].id);
+    }
+  }
+
+  async function refreshRuns() {
+    App.runs = await api('/api/runs');
+    renderRuns();
+  }
+
+  /* ==================== Toast ==================== */
+  let toastTimer = null;
+  function toast(message) {
+    const el = $('toast');
+    $('toastMsg').textContent = message;
+    el.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      el.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+    }, 2600);
+  }
+
+  /* ==================== 初始化 ==================== */
+  function buildWaveform() {
+    const wrap = $('waveform');
+    if (!wrap) return;
+    for (let i = 0; i < 32; i++) {
+      const bar = document.createElement('span');
+      bar.className = 'wave-bar';
+      bar.style.height = (18 + Math.round(Math.random() * 74)) + '%';
+      bar.style.animationDelay = (Math.random() * 0.8).toFixed(2) + 's';
+      wrap.appendChild(bar);
+    }
+  }
+
+  function bindEvents() {
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !$('view-new').classList.contains('hidden')) closeNewMeeting();
+    });
+    const provider = $('setLlmProvider');
+    if (provider) provider.addEventListener('change', updateLlmFields);
+    const file = $('glossaryFile');
+    if (file) file.addEventListener('change', function () { importGlossary(file); });
+    const liveTranslate = $('liveTranslate');
+    if (liveTranslate) liveTranslate.addEventListener('change', function () { toggleLiveTranslation(liveTranslate.checked); });
+    initUploadDrop();
+  }
+
+  async function loadMetaWithRetry(attempt) {
+    attempt = attempt || 0;
+    try {
+      await loadMeta();
+    } catch (err) {
+      if (attempt < 20) {
+        setTimeout(function () { loadMetaWithRetry(attempt + 1); }, 1500);
+      } else {
+        toast('无法连接本地服务：' + err.message + '（请用 start_web.bat 启动）');
+      }
+    }
+  }
+
+  function init() {
+    bindEvents();
+    buildWaveform();
+    switchView('home');
+    setTranscriptView('bi');
+    $('recordListInner').innerHTML = '<p class="px-2 py-8 text-center text-xs text-slate-400">正在连接本地服务…</p>';
+    loadMetaWithRetry(0);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+
+</script>
+<style>
+  #liveTranscript.hide-en .live-en { display: none; }
+</style>
+</body>
+</html>

@@ -15,6 +15,7 @@
     .env(真实 API Key)、data/llm_settings.json(记住的 LLM key)、
     data/xfyun_settings.json(记住的讯飞 key)、
     data/history.db 与 data/history/(历史会议数据)、data/output(个人结果)、
+    data/uploads(处理留档的原始录音/视频)、
     .venv、models、__pycache__、大体积个人录音(余华测试2 / 英文测试1)。
 """
 
@@ -44,6 +45,8 @@ EXCLUDE_DIRS = {
     "dist",
     "data/output",
     "data/history",
+    "data/uploads",  # 处理留档的原始音视频(隐私)
+    "data/tmp",
 }
 
 # 不打包的具体文件(含密钥 / 隐私 / 个人结果)
@@ -52,6 +55,8 @@ EXCLUDE_FILES = {
     "data/llm_settings.json",  # 你「记住」的 LLM API Key
     "data/xfyun_settings.json",  # 你「记住」的讯飞 key
     "data/history.db",          # 历史会议数据
+    "data/glossary.txt",        # 你的私有术语表
+    "data/ui_settings.json",    # 你的界面偏好
 }
 
 # 不打包的大体积个人录音(协作者可用小样例自测)

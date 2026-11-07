@@ -18,6 +18,7 @@ import os
 import struct
 import subprocess
 import sys
+import threading
 import venv
 from pathlib import Path
 
@@ -190,27 +191,62 @@ def main() -> int:
     else:
         print("    ✓ 依赖完整。")
 
-    # ---- 3. 启动中继后端(实时转写 WebSocket)----
     rtasr_port = os.environ.get("RTASR_PORT", "8000")
-    backend_proc: subprocess.Popen | None = None
-    try:
-        backend_proc = subprocess.Popen(
-            [str(VENV_PY), "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", rtasr_port, "--log-level", "warning"],
-            cwd=str(ROOT),
-        )
-        print(f"    ✓ 实时转写中继已启动(ws://127.0.0.1:{rtasr_port}/rtasr)")
-    except Exception as exc:  # 后端起不来不阻断前端
-        print(f"    [提示] 实时转写中继启动失败(可忽略,将回退 Web Speech):{exc}")
+    use_streamlit = (
+        os.environ.get("MEETNOTE_UI", "web").strip().lower() == "streamlit"
+        or "--streamlit" in sys.argv
+    )
 
-    # ---- 4. 启动前端 ----
-    print("\n==> 正在启动,浏览器会自动打开 http://localhost:8501")
-    print("    (保持本窗口开启;关闭本窗口即退出程序)\n")
-    try:
-        subprocess.call([str(VENV_PY), "-m", "streamlit", "run", str(ROOT / "app" / "web.py")])
-    finally:
-        if backend_proc and backend_proc.poll() is None:
-            backend_proc.terminate()
-    return 0
+    # ---- 3a. 旧版 Streamlit 界面(备用入口)----
+    # 设置环境变量 MEETNOTE_UI=streamlit 或命令行加 --streamlit 时启用。
+    if use_streamlit:
+        backend_proc: subprocess.Popen | None = None
+        try:
+            backend_proc = subprocess.Popen(
+                [str(VENV_PY), "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", rtasr_port, "--log-level", "warning"],
+                cwd=str(ROOT),
+            )
+            print(f"    ✓ 实时转写中继已启动(ws://127.0.0.1:{rtasr_port}/rtasr)")
+        except Exception as exc:  # 后端起不来不阻断前端
+            print(f"    [提示] 实时转写中继启动失败(可忽略,将回退 Web Speech):{exc}")
+
+        print("\n==> 正在启动旧版界面,浏览器会自动打开 http://localhost:8501")
+        print("    (保持本窗口开启;关闭本窗口即退出程序)\n")
+        try:
+            subprocess.call([str(VENV_PY), "-m", "streamlit", "run", str(ROOT / "app" / "web.py")])
+        finally:
+            if backend_proc and backend_proc.poll() is None:
+                backend_proc.terminate()
+        return 0
+
+    # ---- 3b. 新版网页界面:FastAPI 同时提供页面与 /api/* 接口 ----
+    url = f"http://127.0.0.1:{rtasr_port}/"
+    print(f"\n==> 正在启动网页界面,浏览器会自动打开 {url}")
+    print("    (保持本窗口开启;关闭本窗口即退出程序)")
+    print("    旧版 Streamlit 界面:双击 start_streamlit.bat,或在命令前加 --streamlit\n")
+
+    def _open_browser() -> None:
+        try:
+            import webbrowser
+
+            webbrowser.open(url)
+        except Exception:
+            pass
+
+    threading.Timer(2.0, _open_browser).start()
+    return subprocess.call(
+        [
+            str(VENV_PY),
+            "-m",
+            "uvicorn",
+            "app.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            rtasr_port,
+        ],
+        cwd=str(ROOT),
+    )
 
 
 if __name__ == "__main__":

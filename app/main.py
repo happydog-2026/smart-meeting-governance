@@ -21,6 +21,7 @@ import asyncio
 import json
 import logging
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -30,11 +31,27 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.services.history import TRASH_RETENTION_DAYS, purge_expired  # noqa: E402
 from app.services.xfyun_rtasr import build_url, parse_result  # noqa: E402
+from app.webui import router as webui_router  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="会议智治 · 实时转写中继")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """启动时清理回收站里超过保留期(30 天)的记录。"""
+    try:
+        removed = purge_expired(TRASH_RETENTION_DAYS)
+        if removed:
+            logger.info("已清理 %d 条超过 %d 天的回收站记录", removed, TRASH_RETENTION_DAYS)
+    except Exception:  # pragma: no cover - 清理失败不阻断启动
+        logger.warning("回收站过期记录清理失败", exc_info=True)
+    yield
+
+
+app = FastAPI(title="会议智治 · 网页界面与实时转写中继", lifespan=lifespan)
+app.include_router(webui_router)
 
 # 讯飞断连后,浏览器未及时结束会话时最长等多久(秒)
 XF_OPEN_TIMEOUT = 15

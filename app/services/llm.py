@@ -266,6 +266,7 @@ def correct_transcript(
 def summarize(
     text: str,
     *,
+    instruction: str | None = None,
     model: str | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
@@ -274,6 +275,7 @@ def summarize(
 
     Args:
         text: 对话全文(纠错后的纯文本)。
+        instruction: 用户指定的额外纪要要求(如「按周会模板输出」),可空。
         model / api_key / base_url: 调用方自定义,空则用 .env 配置。
     Returns:
         {
@@ -283,8 +285,10 @@ def summarize(
           "keywords": [str]
         }
     """
+    extra = f"额外的纪要要求(用户指定,务必遵守):\n{instruction}\n\n" if instruction else ""
     user = (
         f"对话内容:\n{text}\n\n"
+        f"{extra}"
         f"请输出 JSON,包含以下字段:\n"
         f'  "title": 一句话主题;\n'
         f'  "summary": 2-3 句总体概述;\n'
@@ -353,13 +357,16 @@ def extract_terms(
 def brief_summary(
     text: str,
     *,
+    instruction: str | None = None,
     model: str | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> str:
     """生成一篇小篇幅总结(区别于结构化纪要,给用户一段可直接引用的浓缩版)。"""
+    extra = f"额外的纪要要求(用户指定,务必遵守):\n{instruction}\n\n" if instruction else ""
     user = (
         f"会议内容:\n{text}\n\n"
+        f"{extra}"
         f'请输出 JSON:{{"brief": "小篇幅总结"}}'
     )
     data = _chat_json(BRIEF_SYSTEM, user, model=model, api_key=api_key, base_url=base_url)

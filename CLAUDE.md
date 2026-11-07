@@ -45,10 +45,13 @@ pip install -r requirements.txt
 # 端到端:音频→转写→纠错→摘要(输出 data/output/<名>.summary.json)
 .venv/Scripts/python.exe scripts/pipeline.py data/samples/测试1.m4a --glossary "DeepSeek" --language zh
 
-# 前端(Streamlit,双击 start_web.bat 或)
+# 前端(新版网页界面,双击 start_web.bat 或;FastAPI 同时提供页面 + /api/*)
+.venv/Scripts/python.exe run.py
+
+# 旧版 Streamlit 界面(备用入口,双击 start_streamlit.bat)
 .venv/Scripts/python.exe -m streamlit run app/web.py
 
-# 后端(实时转写 WebSocket 中继,讯飞 rtasr;start_web.bat / run.py 会自动拉起,一般无需手动跑)
+# 后端(新版页面 + 实时转写 WebSocket 中继;start_web.bat / run.py 会自动拉起,一般无需手动跑)
 uvicorn app.main:app --port 8000
 
 # 测试
@@ -85,7 +88,7 @@ tests/               # 单元测试 + 评测脚本
 
 ## 注意事项
 
-- 比赛截止:自 2026-10-26 起仅剩约 1 周,以交付可演示 MVP 为唯一目标
+-
 - 需准备 3-5 段中英会议音频(含多人对话)作为固定评测集
 - 验收指标:CER、纪要人工评分(准确/完整/可用)、中英翻译一致性、1 小时会议处理耗时
 - 说话人分离(funasr 集成式)依赖两个非 PyPI 常规项:项目自带的 `bin/ffmpeg.exe`(由 `imageio-ffmpeg` 提供,已由 `app/config.py` 前置到 PATH)和 `kaldi-native-fbank`(fbank 后端)。首次跑分离会自动从 ModelScope 下载 paraformer-zh / fsmn-vad / cam++ 模型(约 400MB)。

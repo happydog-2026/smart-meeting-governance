@@ -8,3 +8,5 @@ data/output/
 .serena/
 .pytest_cache/
 *.log
+
+data/uploads/
