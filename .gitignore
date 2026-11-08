@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 .env
 data/llm_settings.json
+data/xfyun_settings.json
+data/ui_settings.json
+# 账号 / 会话 / 各用户的密钥与术语表(绝不提交)
+data/users/
+data/history.db
+data/history/
 models/
 data/output/
 .serena/

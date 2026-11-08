@@ -72,6 +72,8 @@ class Settings:
     root: Path = ROOT
     data_dir: Path = ROOT / "data"
     output_dir: Path = ROOT / "data" / "output"
+    # 每个账号独立一份设置(LLM / 讯飞 key、术语表、识别参数)
+    users_dir: Path = ROOT / "data" / "users"
 
 
 settings = Settings()

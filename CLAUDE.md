@@ -92,5 +92,6 @@ tests/               # 单元测试 + 评测脚本
 - 需准备 3-5 段中英会议音频(含多人对话)作为固定评测集
 - 验收指标:CER、纪要人工评分(准确/完整/可用)、中英翻译一致性、1 小时会议处理耗时
 - 说话人分离(funasr 集成式)依赖两个非 PyPI 常规项:项目自带的 `bin/ffmpeg.exe`(由 `imageio-ffmpeg` 提供,已由 `app/config.py` 前置到 PATH)和 `kaldi-native-fbank`(fbank 后端)。首次跑分离会自动从 ModelScope 下载 paraformer-zh / fsmn-vad / cam++ 模型(约 400MB)。
-- 「实时字幕」页:在「⚙️ 设置」页「🔊 实时转写 (讯飞)」填你自己的讯飞 AppID/接口密钥走云端实时转写(速度接近讯飞听见),记住到 `data/xfyun_settings.json`(打包时会剔除);留空则回退浏览器 Web Speech API。讯飞 key 只经浏览器传给中继后端(`app/main.py`,由 `run.py` 自动拉起,默认 8000 端口),服务端不内置 key,便于分发后各用各的 key。
-- LLM 同样只认「⚙️ 设置」页「🔑 大模型」里用户自己填的 key(记住到 `data/llm_settings.json`,打包时剔除);留空则回退本机 Ollama 免费模型(`OLLAMA_BASE_URL`/`OLLAMA_MODEL`,默认 `qwen2.5:3b`,需已装并启动 Ollama),不回退 `.env`。`.env` 里的 `LLM_*` 仅用于命令行脚本(`scripts/pipeline.py` 等)开发者本地跑,网页端不读。
+- 「实时字幕」页:在「⚙️ 设置」页「🔊 实时转写 (讯飞)」填你自己的讯飞 AppID/接口密钥走云端实时转写(速度接近讯飞听见),记住到 `data/users/<用户ID>/xfyun_settings.json`(打包时会剔除;旧版全局 `data/xfyun_settings.json` 会在首个管理员注册时自动复制过去);留空则回退浏览器 Web Speech API。讯飞 key 只经浏览器传给中继后端(`app/main.py`,由 `run.py` 自动拉起,默认 8000 端口),服务端不内置 key,便于分发后各用各的 key。
+- 新版网页界面(带登录)的认证与多用户隔离见 `app/services/auth.py`:账号/会话存 `data/history.db` 的 `users`/`sessions` 表,密码只存 `hashlib.scrypt` 哈希;会议记录按 `history.user_id` 隔离;各用户的 Key/术语表/界面偏好存 `data/users/<用户ID>/`。游客(`is_guest=1`)无密码、退出登录即清空,可原地升级为正式账号(保留同一 user_id)。分享页 `/s/{token}` 与 `/api/auth/*` 公开,其余 `/api/*` 需会话 cookie。打包时 `data/users/`、`data/history.db`、`data/history/` 一律剔除。
+- LLM 同样只认「⚙️ 设置」页「🔑 大模型」里用户自己填的 key(记住到 `data/users/<用户ID>/llm_settings.json`,打包时剔除);留空则回退本机 Ollama 免费模型(`OLLAMA_BASE_URL`/`OLLAMA_MODEL`,默认 `qwen2.5:3b`,需已装并启动 Ollama),不回退 `.env`。`.env` 里的 `LLM_*` 仅用于命令行脚本(`scripts/pipeline.py` 等)开发者本地跑,网页端不读。

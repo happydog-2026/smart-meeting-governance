@@ -14,7 +14,8 @@
 不含(防止泄露):
     .env(真实 API Key)、data/llm_settings.json(记住的 LLM key)、
     data/xfyun_settings.json(记住的讯飞 key)、
-    data/history.db 与 data/history/(历史会议数据)、data/output(个人结果)、
+    data/users/(各用户账号设置:哈希密码、各自填的 key、术语表)、
+    data/history.db 与 data/history/(历史会议数据,含账号与会话)、data/output(个人结果)、
     data/uploads(处理留档的原始录音/视频)、
     .venv、models、__pycache__、大体积个人录音(余华测试2 / 英文测试1)。
 """
@@ -47,6 +48,7 @@ EXCLUDE_DIRS = {
     "data/history",
     "data/uploads",  # 处理留档的原始音视频(隐私)
     "data/tmp",
+    "data/users",  # 各用户的设置 / 术语表(每人各自填的 key)
 }
 
 # 不打包的具体文件(含密钥 / 隐私 / 个人结果)
@@ -111,6 +113,8 @@ def main() -> int:
     with ZipFile(out, "r") as zf:
         names = set(zf.namelist())
     leaked = [f for f in EXCLUDE_FILES if f in names]
+    # 用户目录整体不进包(哈希密码、各自填的 key)
+    leaked += [n for n in names if n.startswith("会议智治/data/users/")]
     if leaked:
         print("❌ 打包异常:以下文件不应出现在包里:", leaked, file=sys.stderr)
         return 1

@@ -31,6 +31,11 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.services.auth import (  # noqa: E402
+    SESSION_COOKIE,
+    get_user_by_token,
+    purge_expired_guests,
+)
 from app.services.history import TRASH_RETENTION_DAYS, purge_expired  # noqa: E402
 from app.services.xfyun_rtasr import build_url, parse_result  # noqa: E402
 from app.webui import router as webui_router  # noqa: E402
@@ -40,13 +45,19 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """启动时清理回收站里超过保留期(30 天)的记录。"""
+    """启动时清理回收站过期记录,以及残留的游客账号(及其数据)。"""
     try:
         removed = purge_expired(TRASH_RETENTION_DAYS)
         if removed:
             logger.info("已清理 %d 条超过 %d 天的回收站记录", removed, TRASH_RETENTION_DAYS)
     except Exception:  # pragma: no cover - 清理失败不阻断启动
         logger.warning("回收站过期记录清理失败", exc_info=True)
+    try:
+        guests = purge_expired_guests()
+        if guests:
+            logger.info("已清理 %d 个过期的游客账号", guests)
+    except Exception:  # pragma: no cover - 清理失败不阻断启动
+        logger.warning("游客账号清理失败", exc_info=True)
     yield
 
 
@@ -64,6 +75,12 @@ async def health() -> dict:
 
 @app.websocket("/rtasr")
 async def rtasr_relay(ws: WebSocket) -> None:
+    # 实时转写同样要求登录:同源浏览器会自动带上会话 cookie
+    token = ws.cookies.get(SESSION_COOKIE)
+    if not (token and get_user_by_token(token)):
+        await ws.accept()
+        await ws.close(code=4401)
+        return
     await ws.accept()
 
     appid = ""

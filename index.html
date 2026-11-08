@@ -109,6 +109,45 @@
 </head>
 
 <body class="bg-white text-slate-900 antialiased show-translation">
+
+<!-- ==================== 登录 / 注册 / 游客 ==================== -->
+<div id="authScreen" class="fixed inset-0 z-[70] flex items-center justify-center bg-gradient-to-br from-indigo-100/45 via-white/35 to-violet-100/45 p-4 backdrop-blur-[6px] backdrop-saturate-150">
+  <div class="w-full max-w-sm rounded-2xl bg-white/95 p-6 shadow-2xl ring-1 ring-white/70 backdrop-blur-xl">
+    <div class="flex items-center gap-2 px-1">
+      <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
+        <i data-lucide="audio-lines" class="size-4" aria-hidden="true"></i>
+      </span>
+      <p class="text-sm font-bold leading-tight text-indigo-600">Smart Meeting Government</p>
+    </div>
+
+    <h2 id="authTitle" class="mt-5 text-xl font-bold text-slate-900">登录</h2>
+    <p id="authSubtitle" class="mt-1 text-xs leading-relaxed text-slate-500">登录后使用会议转写与纪要功能</p>
+
+    <form id="authForm" class="mt-5 flex flex-col gap-3" autocomplete="on">
+      <label class="flex flex-col gap-1 text-xs font-medium text-slate-600">
+        用户名
+        <input id="authUsername" name="username" type="text" autocomplete="username"
+          class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="flex flex-col gap-1 text-xs font-medium text-slate-600">
+        密码
+        <input id="authPassword" name="password" type="password" autocomplete="current-password"
+          class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <p id="authError" class="hidden rounded-lg bg-rose-50 px-3 py-2 text-xs leading-relaxed text-rose-600"></p>
+      <button id="authSubmit" type="submit"
+        class="mt-1 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60">
+        登录
+      </button>
+    </form>
+
+    <div class="mt-4 flex items-center justify-between text-xs">
+      <button id="authSwitch" type="button" class="font-medium text-indigo-600 transition hover:underline">注册新账号</button>
+      <button id="authGuest" type="button" class="font-medium text-slate-500 transition hover:text-indigo-600">以游客身份体验</button>
+    </div>
+  </div>
+</div>
+
 <div class="flex h-dvh overflow-hidden bg-white text-slate-900">
 
   <!-- ==================== 全局侧栏 ==================== -->
@@ -161,23 +200,19 @@
     </nav>
 
     <div class="mt-4 flex flex-col gap-2.5 pt-2">
-      <button onclick="demoAction('企业 API 接入')" class="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-emerald-50 p-3 text-left shadow-sm ring-1 ring-white">
-        <p class="text-sm font-bold text-slate-800">企业<span class="text-emerald-500">API</span>接入</p>
-        <p class="mt-1 text-xs leading-relaxed text-slate-600">大模型能力<br />全面开放集成</p>
-        <span class="mt-2 inline-flex items-center text-xs font-medium text-emerald-600">
-          立即体验<i data-lucide="chevron-right" class="size-3" aria-hidden="true"></i>
-        </span>
-        <span aria-hidden="true" class="absolute -bottom-4 -right-3 flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-200 to-teal-300">
-          <i data-lucide="plug" class="size-6 -rotate-45 text-white"></i>
-        </span>
-      </button>
-
       <button data-nav="settings" onclick="switchView('settings')" class="nav-btn flex h-9 w-full items-center gap-2.5 rounded-lg px-4 text-sm">
         <i data-lucide="settings" class="nav-icon size-4" aria-hidden="true"></i>设置与模型
       </button>
       <button onclick="demoAction('帮助与反馈')" class="flex items-center gap-2.5 rounded-lg px-4 py-1 text-xs text-slate-700 transition hover:text-indigo-600">
         <i data-lucide="circle-help" class="size-4" aria-hidden="true"></i>帮助与反馈
       </button>
+      <button id="upgradeBtn" onclick="showAuth('upgrade')" class="hidden items-center gap-2.5 rounded-lg px-4 py-1 text-xs font-medium text-amber-600 transition hover:text-amber-700">
+        <i data-lucide="user-round-plus" class="size-4" aria-hidden="true"></i>升级为正式账号
+      </button>
+      <div class="mt-1 flex items-center justify-between rounded-lg px-4 py-1 text-xs text-slate-500">
+        <span id="currentUser" class="truncate font-medium text-slate-600">未登录</span>
+        <button onclick="logout()" class="shrink-0 transition hover:text-rose-600">退出</button>
+      </div>
     </div>
   </aside>
 
@@ -1174,6 +1209,9 @@
     mic: { recorder: null, chunks: [], stream: null, blob: null, timer: null, seconds: 0 }
   };
 
+  // 当前登录状态。user 为 null 时显示登录页;is_guest 决定展示「游客」与升级入口。
+  const AUTH = { user: null, mode: 'login' };
+
   const SPEAKER_STYLES = [
     { chip: 'bg-indigo-100 text-indigo-600', bar: 'bg-indigo-400' },
     { chip: 'bg-emerald-100 text-emerald-600', bar: 'bg-emerald-400' },
@@ -1211,6 +1249,11 @@
     if (!res.ok) {
       let msg = res.status + ' ' + res.statusText;
       try { const data = await res.json(); if (data.detail) msg = data.detail; } catch (e) {}
+      // 受保护接口返回 401 说明会话失效,回到登录页(auth 接口自身的 401 交给表单处理)
+      if (res.status === 401 && path.indexOf('/api/auth/') !== 0) {
+        AUTH.user = null;
+        showAuth('login');
+      }
       const err = new Error(msg);
       err.status = res.status;
       throw err;
@@ -4000,6 +4043,128 @@
     }, 2600);
   }
 
+  /* ==================== 登录 / 游客 ==================== */
+  function authError(message) {
+    const el = $('authError');
+    el.textContent = message;
+    el.classList.remove('hidden');
+  }
+
+  function clearAuthError() {
+    const el = $('authError');
+    el.classList.add('hidden');
+    el.textContent = '';
+  }
+
+  function showAuth(mode) {
+    AUTH.mode = mode || 'login';
+    const isSetup = AUTH.mode === 'setup';
+    const isRegister = AUTH.mode === 'register' || isSetup;
+    const isUpgrade = AUTH.mode === 'upgrade';
+    const screen = $('authScreen');
+    screen.classList.remove('hidden');
+    screen.classList.add('flex');
+    $('authTitle').textContent = isSetup
+      ? '创建管理员账号'
+      : isUpgrade ? '升级为正式账号' : (isRegister ? '注册账号' : '登录');
+    $('authSubtitle').textContent = isSetup
+      ? '首次使用，请先创建管理员账号（第一个账号自动成为管理员）'
+      : isUpgrade ? '设置用户名和密码，当前的记录与设置会完整保留'
+      : isRegister ? '注册后会议记录与设置仅自己可见'
+      : '登录后使用会议转写、纪要、翻译与问答';
+    $('authSubmit').textContent = isSetup
+      ? '创建并登录' : isUpgrade ? '确认升级' : (isRegister ? '注册并登录' : '登录');
+    $('authPassword').setAttribute('autocomplete', (isRegister || isUpgrade) ? 'new-password' : 'current-password');
+    const sw = $('authSwitch');
+    sw.textContent = isRegister ? '已有账号？去登录' : '注册新账号';
+    sw.style.display = (isSetup || isUpgrade) ? 'none' : '';
+    $('authGuest').style.display = (isSetup || isUpgrade) ? 'none' : '';
+    clearAuthError();
+    $('authUsername').value = '';
+    $('authPassword').value = '';
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function hideAuth() {
+    const screen = $('authScreen');
+    screen.classList.add('hidden');
+    screen.classList.remove('flex');
+  }
+
+  function applyAuth(user) {
+    AUTH.user = user || null;
+    const label = !user ? '未登录' : (user.is_guest ? '游客' : user.username);
+    const el = $('currentUser');
+    if (el) el.textContent = label;
+    const up = $('upgradeBtn');
+    if (up) up.classList.toggle('hidden', !(user && user.is_guest));
+  }
+
+  async function bootstrapAuth() {
+    try {
+      const data = await api('/api/auth/me');
+      if (data.user) {
+        applyAuth(data.user);
+        hideAuth();
+        return true;
+      }
+      showAuth(data.setup_required ? 'setup' : 'login');
+    } catch (err) {
+      showAuth('login');
+      authError('无法连接本地服务：' + err.message);
+    }
+    return false;
+  }
+
+  async function submitAuth(ev) {
+    ev.preventDefault();
+    const username = $('authUsername').value.trim();
+    const password = $('authPassword').value;
+    const mode = AUTH.mode;
+    if (!username) return authError('请输入用户名');
+    if (!password) return authError('请输入密码');
+    const path = (mode === 'register' || mode === 'setup')
+      ? '/api/auth/register'
+      : mode === 'upgrade' ? '/api/auth/upgrade' : '/api/auth/login';
+    const btn = $('authSubmit');
+    btn.disabled = true;
+    try {
+      const data = await api(path, { method: 'POST', body: { username: username, password: password } });
+      applyAuth(data.user);
+      hideAuth();
+      toast(mode === 'setup' ? '管理员账号已创建'
+        : mode === 'upgrade' ? '已升级为正式账号' : '登录成功');
+      // 重新加载整页:彻底清掉上一个账号可能残留在内存 / DOM 里的数据
+      setTimeout(function () { window.location.reload(); }, 350);
+    } catch (err) {
+      btn.disabled = false;
+      authError(err.message || '操作失败');
+    }
+  }
+
+  async function enterGuest() {
+    clearAuthError();
+    try {
+      const data = await api('/api/auth/guest', { method: 'POST' });
+      applyAuth(data.user);
+      hideAuth();
+      toast('已进入游客模式，数据在退出后清空');
+      setTimeout(function () { window.location.reload(); }, 350);
+    } catch (err) {
+      authError(err.message || '进入游客模式失败');
+    }
+  }
+
+  async function logout() {
+    try { await api('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+    AUTH.user = null;
+    window.location.reload();
+  }
+
+  function toggleAuthMode() {
+    showAuth(AUTH.mode === 'login' ? 'register' : 'login');
+  }
+
   /* ==================== 初始化 ==================== */
   function buildWaveform() {
     const wrap = $('waveform');
@@ -4017,6 +4182,12 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !$('view-new').classList.contains('hidden')) closeNewMeeting();
     });
+    const authForm = $('authForm');
+    if (authForm) authForm.addEventListener('submit', submitAuth);
+    const authSwitch = $('authSwitch');
+    if (authSwitch) authSwitch.addEventListener('click', toggleAuthMode);
+    const authGuest = $('authGuest');
+    if (authGuest) authGuest.addEventListener('click', enterGuest);
     const provider = $('setLlmProvider');
     if (provider) provider.addEventListener('change', updateLlmFields);
     const file = $('glossaryFile');
@@ -4039,13 +4210,14 @@
     }
   }
 
-  function init() {
+  async function init() {
     bindEvents();
     buildWaveform();
     switchView('home');
     setTranscriptView('bi');
     $('recordListInner').innerHTML = '<p class="px-2 py-8 text-center text-xs text-slate-400">正在连接本地服务…</p>';
-    loadMetaWithRetry(0);
+    // 先确认登录状态:未登录只显示登录页,不请求任何业务数据
+    if (await bootstrapAuth()) loadMetaWithRetry(0);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
