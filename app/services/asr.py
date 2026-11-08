@@ -38,7 +38,12 @@ from app.config import settings  # noqa: F401  必须先于 faster_whisper 导�
 
 from faster_whisper import WhisperModel
 
+from app.services.av_compat import patch_av_metadata_errors
+
 logger = logging.getLogger(__name__)
+
+# 必须在任何音频解码发生前执行:兼容 PyAV 19+ 移除 metadata_errors 的问题。
+patch_av_metadata_errors()
 
 SUPPORTED_SUFFIXES = {
     ".wav", ".mp3", ".m4a", ".flac", ".ogg", ".opus",

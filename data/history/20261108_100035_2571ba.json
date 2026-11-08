@@ -1,0 +1,39 @@
+{
+  "source": "本地录音",
+  "duration": 6.36,
+  "summary": {
+    "title": "音频连接测试",
+    "summary": "发言人1反复询问对方是否能听到，属于通话前的音频连接测试，未涉及实质讨论内容。",
+    "topics": [],
+    "action_items": [],
+    "keywords": [
+      "音频测试",
+      "通话连接",
+      "喂喂喂"
+    ]
+  },
+  "brief": "会议主题未能明确，因发言人1仅测试音频（“喂喂喂，听得到吗”），未进入实质议题。主要结论：无。关键待办：无。",
+  "transcript": "喂喂喂,听得到吗?听得到吗?喂喂喂。",
+  "source_segments": [
+    {
+      "start": 2.84,
+      "end": 5.84,
+      "text": "喂喂喂,听得到吗?听得到吗?喂喂喂。",
+      "speaker": "发言人1"
+    }
+  ],
+  "corrected_text": "喂喂喂,听得到吗?听得到吗?喂喂喂。",
+  "corrected_segments": [
+    {
+      "start": 2.84,
+      "end": 5.84,
+      "text": "喂喂喂,听得到吗?听得到吗?喂喂喂。",
+      "speaker": "发言人1"
+    }
+  ],
+  "translated_summary": null,
+  "translated_text": null,
+  "translated_lang": "",
+  "has_timestamps": true,
+  "fallback_local": false
+}
